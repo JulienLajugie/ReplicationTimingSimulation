@@ -93,10 +93,11 @@ public class ComputeQValues implements Operation<SCWList> {
 
 
 	private SCWList performFisherExactTestAndRetrieveQValues() throws IOException, InterruptedException, CloneNotSupportedException, InvalidParameterException, ExecutionException {
-		File tmpD = File.createTempFile("fish_in_", ".txt");
-		File tmpR = File.createTempFile("fish_out_", ".txt");
-		File tmpScript = File.createTempFile("fish", ".R");
-		File tmpOut = File.createTempFile("fish_rout", ".txt");
+		File tmpDir = new File("/home/jlajugie/tmp");
+		File tmpD = File.createTempFile("fish_in_", ".txt", tmpDir);
+		File tmpR = File.createTempFile("fish_out_", ".txt", tmpDir);
+		File tmpScript = File.createTempFile("fish", ".R", tmpDir);
+		File tmpOut = File.createTempFile("fish_rout", ".txt", tmpDir);
 
 		//data = matrix with columns a, b, c, d
 		//test will be performed on each row
@@ -128,6 +129,7 @@ public class ComputeQValues implements Operation<SCWList> {
 		dout.close();
 		//Run the R command
 		String cmd = "R CMD BATCH " + tmpScript.getAbsolutePath() + " " + tmpOut.getAbsolutePath();
+		System.out.println(cmd);
 		Runtime.getRuntime().exec(cmd).waitFor();
 		//Read the output
 		BufferedReader in = new BufferedReader(new FileReader(tmpR));

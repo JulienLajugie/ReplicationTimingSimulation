@@ -14,7 +14,7 @@
  *
  *     You should have received a copy of the GNU General Public License
  *     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * 
+ *
  *     Authors:	Julien Lajugie <julien.lajugie@einstein.yu.edu>
  *     			Nicolas Fourel <nicolas.fourel@einstein.yu.edu>
  *     Website: <http://genplay.einstein.yu.edu>
@@ -94,6 +94,7 @@ public class FindIslands implements Operation<GeneList> {
 							islandStart = currentList.get(i).getStart();
 						}
 						islandStop = currentList.get(i).getStop();
+						i++;
 					}
 					SimpleGene geneToAdd = new SimpleGene(null, Strand.FIVE, islandStart, islandStop, 1,SCWListViews.createGenericSCWListView(islandStart, islandStop, 1));
 					resultListBuilder.addElementToBuild(currentChromosome, geneToAdd);

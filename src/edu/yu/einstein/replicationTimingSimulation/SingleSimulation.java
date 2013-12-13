@@ -14,7 +14,7 @@
  *
  *     You should have received a copy of the GNU General Public License
  *     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * 
+ *
  *     Authors:	Julien Lajugie <julien.lajugie@einstein.yu.edu>
  *     			Nicolas Fourel <nicolas.fourel@einstein.yu.edu>
  *     Website: <http://genplay.einstein.yu.edu>
@@ -40,7 +40,7 @@ import edu.yu.einstein.genplay.dataStructure.list.genomeWideList.geneList.GeneLi
  * Runs a simulation for a given island size and a given
  * @author Julien Lajugie
  */
-public class SCWLORunSimulation implements Operation<SimulationResult> {
+public class SingleSimulation implements Operation<SimulationResult> {
 
 	private final int		ISLAND_DISTANCE = 4000000; 	// space between 2 island starts position
 	private final int 		islandSize;					// size of the islands to use in the simulation
@@ -50,13 +50,13 @@ public class SCWLORunSimulation implements Operation<SimulationResult> {
 
 
 	/**
-	 * Creates an instance of {@link SCWLORunSimulation}
+	 * Creates an instance of {@link SingleSimulation}
 	 * @param islandSize size of the islands to use in the simulation
 	 * @param percentageReadToAdd percentage of reads to add in the S phase in the islands
 	 * @param sList s phase data
 	 * @param g1List g1 phase data
 	 */
-	public SCWLORunSimulation(int islandSize,
+	public SingleSimulation(int islandSize,
 			double percentageReadToAdd,
 			SCWList sList,
 			SCWList g1List) {
@@ -69,6 +69,7 @@ public class SCWLORunSimulation implements Operation<SimulationResult> {
 
 	@Override
 	public SimulationResult compute() throws Exception {
+		System.out.println("SingleSimulation.compute() - 1");
 		// 1 - generate control lists
 		SCWList[] resampledList = new ResampleLayers(sList, g1List, 0).compute();
 		SCWList controlS = resampledList[0];
@@ -77,20 +78,24 @@ public class SCWLORunSimulation implements Operation<SimulationResult> {
 		// 2 - generate sample lists
 
 		// 2a - generate list with reads added
+		System.out.println("SingleSimulation.compute() - 2a");
 		resampledList = new ResampleLayers(sList, g1List, percentageReadToAdd).compute();
 		SCWList resampledSReadAdded = resampledList[0];
 		SCWList resampledG1ReadAdded = resampledList[1];
 
 		// 2b - generate list with no reads added
+		System.out.println("SingleSimulation.compute() - 2b");
 		resampledList = new ResampleLayers(sList, g1List, 0).compute();
 		SCWList resampledSNoReadAdded = resampledList[0];
 		SCWList resampledG1NoReadAdded = resampledList[1];
 
 		// 2c - generate islands mask list and its inverse
+		System.out.println("SingleSimulation.compute() - 2c");
 		SCWList islandMask = new GenerateIslands(ISLAND_DISTANCE, islandSize).compute();
 		SCWList islandInvertedMask = new MCWLOInvertMask(islandMask).compute();
 
 		// 2d - sum the island with reads added with the baseline
+		System.out.println("SingleSimulation.compute() - 2d");
 		resampledSReadAdded = new SCWLOTwoLayers(resampledSReadAdded, islandMask, ScoreOperation.MULTIPLICATION).compute();
 		resampledSNoReadAdded = new SCWLOTwoLayers(resampledSNoReadAdded, islandInvertedMask, ScoreOperation.MULTIPLICATION).compute();
 		SCWList resampledS = new SCWLOTwoLayers(resampledSReadAdded, resampledSNoReadAdded, ScoreOperation.ADDITION).compute();
@@ -100,40 +105,49 @@ public class SCWLORunSimulation implements Operation<SimulationResult> {
 		SCWList resampledG1 = new SCWLOTwoLayers(resampledG1ReadAdded, resampledG1NoReadAdded, ScoreOperation.ADDITION).compute();
 
 		// 3 - convert into binlist
+		System.out.println("SingleSimulation.compute() - 3");
 		BinList binnedControlS = new SCWLOConvertIntoBinList(controlS, 500, ScoreOperation.ADDITION).compute();
 		BinList binnedControlG1 = new SCWLOConvertIntoBinList(controlG1, 500, ScoreOperation.ADDITION).compute();
 		BinList binnedResampledS = new SCWLOConvertIntoBinList(resampledS, 500, ScoreOperation.ADDITION).compute();
 		BinList binnedResampledG1 = new SCWLOConvertIntoBinList(resampledG1, 500, ScoreOperation.ADDITION).compute();
 
 		// 4 - gauss binlists
+		System.out.println("SingleSimulation.compute() - 4");
 		binnedControlS = new BLOGauss(binnedControlS, 400000, false).compute();
 		binnedControlG1 = new BLOGauss(binnedControlG1, 400000, false).compute();
 		binnedResampledS = new BLOGauss(binnedResampledS, 400000, false).compute();
 		binnedResampledG1 = new BLOGauss(binnedResampledG1, 400000, false).compute();
 
 		// 5 - compute S / G1 ratios
+		System.out.println("SingleSimulation.compute() - 5");
 		BinList controlSG1 = (BinList) new BLOTwoLayers(binnedControlS, binnedControlG1, ScoreOperation.DIVISION).compute();
 		BinList sampleSG1 = (BinList) new BLOTwoLayers(binnedResampledS, binnedResampledG1, ScoreOperation.DIVISION).compute();
 
 		// 6 - compute sample - control difference
+		System.out.println("SingleSimulation.compute() - 6");
 		BinList sampleCtrlDifference = (BinList) new BLOTwoLayers(sampleSG1, controlSG1, ScoreOperation.SUBTRACTION).compute();
 
 		// 7 - call islands
+		System.out.println("SingleSimulation.compute() - 7");
 		GeneList islands = new FindIslands(sampleCtrlDifference).compute();
 
 		// 8 - score islands
+		System.out.println("SingleSimulation.compute() - 8");
 		GeneList controlIslandsS = new GLOScoreFromSCWList(islands, controlS, GeneScoreType.BASE_COVERAGE_SUM).compute();
 		GeneList controlIslandsG1 = new GLOScoreFromSCWList(islands, controlG1, GeneScoreType.BASE_COVERAGE_SUM).compute();
 		GeneList sampleIslandsS = new GLOScoreFromSCWList(islands, resampledS, GeneScoreType.BASE_COVERAGE_SUM).compute();
 		GeneList sampleIslandsG1 = new GLOScoreFromSCWList(islands, resampledG1, GeneScoreType.BASE_COVERAGE_SUM).compute();
 
 		// 9 - compute fisher exact test and retrieve qvalues
+		System.out.println("SingleSimulation.compute() - 9");
 		SCWList islandsQValues = new ComputeQValues(controlIslandsS, controlIslandsG1, sampleIslandsS, sampleIslandsG1).compute();
 
 		// 10 - filter islands with qvalue under 0.05
+		System.out.println("SingleSimulation.compute() - 10");
 		SCWList filteredIslands = new SCWLOFilterThreshold(islandsQValues, 0f, 0.5f, false).compute();
 
 		// 11 - compute false positive and false negatives
+		System.out.println("SingleSimulation.compute() - 11");
 		SimulationResult simulationResult = new ComputeSimulationResult(islandSize, percentageReadToAdd, islandMask, filteredIslands).compute();
 
 		return simulationResult;

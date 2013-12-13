@@ -14,7 +14,7 @@
  *
  *     You should have received a copy of the GNU General Public License
  *     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * 
+ *
  *     Authors:	Julien Lajugie <julien.lajugie@einstein.yu.edu>
  *     			Nicolas Fourel <nicolas.fourel@einstein.yu.edu>
  *     Website: <http://genplay.einstein.yu.edu>
@@ -84,15 +84,25 @@ public class ResampleLayers implements Operation<SCWList[]>{
 				@Override
 				public Void call() throws Exception {
 					for (int j = 0; (j < currentSList.size()) && !stopped; j++) {
-						int oldK = (int) currentSList.get(j).getScore();
-						int oldN = (int) (currentSList.get(j).getScore() + currentG1List.get(j).getScore());
-						int readToAdd = (int) Math.round(oldK * percentageToAdd);
-						int newK = oldK + readToAdd;
-						int newN = oldN + readToAdd;
-						float newS = Binomial.staticNextInt(newN, newK / newN);
-						float newG1 = newN - newS;
-						sListBuilder.addElementToBuild(chromosome, currentSList.get(j).getStart(), currentSList.get(j).getStop(), newS);
-						g1ListBuilder.addElementToBuild(chromosome, currentG1List.get(j).getStart(), currentG1List.get(j).getStop(), newG1);
+						float newS;
+						float newG1;
+						if (currentSList.get(j).getScore() == 0) {
+							newS = 0;
+							newG1 = currentG1List.get(j).getScore();
+						} else if (currentG1List.get(j).getScore() == 0) {
+							newS = (int) (currentSList.get(j).getScore() + (currentSList.get(j).getScore() * percentageToAdd));
+							newG1 = 0;
+						} else {
+							int oldK = (int) currentSList.get(j).getScore();
+							int oldN = (int) (currentSList.get(j).getScore() + currentG1List.get(j).getScore());
+							int readToAdd = (int) Math.round(oldK * percentageToAdd);
+							int newK = oldK + readToAdd;
+							int newN = oldN + readToAdd;
+							newS = Binomial.staticNextInt(newK, newK / (double) newN);
+							newG1 = newN - newS;
+							sListBuilder.addElementToBuild(chromosome, currentSList.get(j).getStart(), currentSList.get(j).getStop(), newS);
+							g1ListBuilder.addElementToBuild(chromosome, currentG1List.get(j).getStart(), currentG1List.get(j).getStop(), newG1);
+						}
 					}
 					// tell the operation pool that a chromosome is done
 					op.notifyDone();
