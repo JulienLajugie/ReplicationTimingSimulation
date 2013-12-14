@@ -21,19 +21,27 @@
  *******************************************************************************/
 package edu.yu.einstein.replicationTimingSimulation;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+
 import edu.yu.einstein.genplay.core.operation.Operation;
 import edu.yu.einstein.genplay.core.operation.SCWList.MCWLOInvertMask;
 import edu.yu.einstein.genplay.core.operation.SCWList.SCWLOConvertIntoBinList;
 import edu.yu.einstein.genplay.core.operation.SCWList.SCWLOFilterThreshold;
+import edu.yu.einstein.genplay.core.operation.SCWList.SCWLOOperationWithConstant;
 import edu.yu.einstein.genplay.core.operation.SCWList.SCWLOTwoLayers;
 import edu.yu.einstein.genplay.core.operation.binList.BLOGauss;
 import edu.yu.einstein.genplay.core.operation.binList.BLOTwoLayers;
 import edu.yu.einstein.genplay.core.operation.geneList.GLOScoreFromSCWList;
 import edu.yu.einstein.genplay.dataStructure.enums.GeneScoreType;
+import edu.yu.einstein.genplay.dataStructure.enums.OperationWithConstant;
 import edu.yu.einstein.genplay.dataStructure.enums.ScoreOperation;
 import edu.yu.einstein.genplay.dataStructure.list.genomeWideList.SCWList.SCWList;
 import edu.yu.einstein.genplay.dataStructure.list.genomeWideList.SCWList.binList.BinList;
 import edu.yu.einstein.genplay.dataStructure.list.genomeWideList.geneList.GeneList;
+import edu.yu.einstein.genplay.dataStructure.list.listView.ListView;
+import edu.yu.einstein.genplay.dataStructure.scoredChromosomeWindow.ScoredChromosomeWindow;
 
 
 /**
@@ -41,6 +49,24 @@ import edu.yu.einstein.genplay.dataStructure.list.genomeWideList.geneList.GeneLi
  * @author Julien Lajugie
  */
 public class SingleSimulation implements Operation<SimulationResult> {
+
+	/**
+	 * Prints the specified {@link ListView} in a temporary file with the specified name prefix
+	 * @param data
+	 * @param prefix
+	 * @throws IOException
+	 */
+	public static void printSCWInTmpFile(ListView<? extends ScoredChromosomeWindow> data, String prefix) throws IOException {
+		File file = File.createTempFile(prefix, ".bed");
+		System.out.println("tmp file: " + file.getPath());
+		//Write the data
+		PrintWriter dout = new PrintWriter(file);
+		for (int i = 0; i < data.size(); i++) {
+			ScoredChromosomeWindow scw = data.get(i);
+			dout.println("chr1\t" + (scw.getStart() - 1)+ "\t" + (scw.getStop() - 1) + "\t-\t" + scw.getScore());
+		}
+		dout.close();
+	}
 
 	private final int		ISLAND_DISTANCE = 4000000; 	// space between 2 island starts position
 	private final int 		islandSize;					// size of the islands to use in the simulation
@@ -65,7 +91,6 @@ public class SingleSimulation implements Operation<SimulationResult> {
 		this.sList = sList;
 		this.g1List = g1List;
 	}
-
 
 	@Override
 	public SimulationResult compute() throws Exception {
@@ -93,6 +118,7 @@ public class SingleSimulation implements Operation<SimulationResult> {
 		System.out.println("SingleSimulation.compute() - 2c");
 		SCWList islandMask = new GenerateIslands(ISLAND_DISTANCE, islandSize).compute();
 		SCWList islandInvertedMask = new MCWLOInvertMask(islandMask).compute();
+		//printSCWInTmpFile(islandMask.get(0), "island_mask");
 
 		// 2d - sum the island with reads added with the baseline
 		System.out.println("SingleSimulation.compute() - 2d");
@@ -123,36 +149,44 @@ public class SingleSimulation implements Operation<SimulationResult> {
 		BinList controlSG1 = (BinList) new BLOTwoLayers(binnedControlS, binnedControlG1, ScoreOperation.DIVISION).compute();
 		BinList sampleSG1 = (BinList) new BLOTwoLayers(binnedResampledS, binnedResampledG1, ScoreOperation.DIVISION).compute();
 
-		// 6 - compute sample - control difference
+		// 6 - remove windows that are null in one of the 2 lists
 		System.out.println("SingleSimulation.compute() - 6");
-		BinList sampleCtrlDifference = (BinList) new BLOTwoLayers(sampleSG1, controlSG1, ScoreOperation.SUBTRACTION).compute();
+		BinList maskControl = (BinList) new SCWLOOperationWithConstant(controlSG1, OperationWithConstant.UNIQUE_SCORE, 1, false).compute();
+		BinList maskSample = (BinList) new SCWLOOperationWithConstant(sampleSG1, OperationWithConstant.UNIQUE_SCORE, 1, false).compute();
+		controlSG1 = (BinList) new BLOTwoLayers(maskSample, controlSG1, ScoreOperation.MULTIPLICATION).compute();
+		sampleSG1 = (BinList) new BLOTwoLayers(maskControl, sampleSG1, ScoreOperation.MULTIPLICATION).compute();
 
-		// 7 - call islands
+		// 7 - compute sample - control difference
 		System.out.println("SingleSimulation.compute() - 7");
-		GeneList islands = new FindIslands(sampleCtrlDifference).compute();
+		BinList sampleCtrlDifference = (BinList) new BLOTwoLayers(sampleSG1, controlSG1, ScoreOperation.SUBTRACTION).compute();
+		//printSCWInTmpFile(sampleCtrlDifference.get(0), "difference");
 
-		// 8 - score islands
+		// 8 - call islands
 		System.out.println("SingleSimulation.compute() - 8");
+		GeneList islands = new FindIslands(sampleCtrlDifference).compute();
+		//printSCWInTmpFile(islands.get(0), "islands");
+
+		// 9 - score islands
+		System.out.println("SingleSimulation.compute() - 9");
 		GeneList controlIslandsS = new GLOScoreFromSCWList(islands, controlS, GeneScoreType.BASE_COVERAGE_SUM).compute();
 		GeneList controlIslandsG1 = new GLOScoreFromSCWList(islands, controlG1, GeneScoreType.BASE_COVERAGE_SUM).compute();
 		GeneList sampleIslandsS = new GLOScoreFromSCWList(islands, resampledS, GeneScoreType.BASE_COVERAGE_SUM).compute();
 		GeneList sampleIslandsG1 = new GLOScoreFromSCWList(islands, resampledG1, GeneScoreType.BASE_COVERAGE_SUM).compute();
 
-		// 9 - compute fisher exact test and retrieve qvalues
-		System.out.println("SingleSimulation.compute() - 9");
+		// 10 - compute fisher exact test and retrieve qvalues
+		System.out.println("SingleSimulation.compute() - 10");
 		SCWList islandsQValues = new ComputeQValues(controlIslandsS, controlIslandsG1, sampleIslandsS, sampleIslandsG1).compute();
 
-		// 10 - filter islands with qvalue under 0.05
-		System.out.println("SingleSimulation.compute() - 10");
+		// 11 - filter islands with qvalue under 0.05
+		System.out.println("SingleSimulation.compute() - 11");
 		SCWList filteredIslands = new SCWLOFilterThreshold(islandsQValues, 0f, 0.5f, false).compute();
 
-		// 11 - compute false positive and false negatives
-		System.out.println("SingleSimulation.compute() - 11");
+		// 12 - compute false positive and false negatives
+		System.out.println("SingleSimulation.compute() - 12");
 		SimulationResult simulationResult = new ComputeSimulationResult(islandSize, percentageReadToAdd, islandMask, filteredIslands).compute();
 
 		return simulationResult;
 	}
-
 
 	@Override
 	public String getDescription() {

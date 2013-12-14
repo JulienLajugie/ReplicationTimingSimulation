@@ -93,25 +93,27 @@ public class ComputeQValues implements Operation<SCWList> {
 
 
 	private SCWList performFisherExactTestAndRetrieveQValues() throws IOException, InterruptedException, CloneNotSupportedException, InvalidParameterException, ExecutionException {
-		File tmpDir = new File("/home/jlajugie/tmp");
-		File tmpD = File.createTempFile("fish_in_", ".txt", tmpDir);
-		File tmpR = File.createTempFile("fish_out_", ".txt", tmpDir);
-		File tmpScript = File.createTempFile("fish", ".R", tmpDir);
-		File tmpOut = File.createTempFile("fish_rout", ".txt", tmpDir);
+		//File tmpDir = new File("/home/jlajugie/tmp");
+		File tmpD = File.createTempFile("fish_in_", ".txt");
+		File tmpR = File.createTempFile("fish_out_", ".txt");
+		File tmpScript = File.createTempFile("fish", ".R");
+		File tmpOut = File.createTempFile("fish_rout", ".txt");
 
 		//data = matrix with columns a, b, c, d
 		//test will be performed on each row
 		PrintWriter sout = new PrintWriter(tmpScript);
 		sout.println("library(qvalue)");
 		sout.println("d = read.table('" + tmpD.getAbsolutePath() + "')");
-		sout.println(
+		/*sout.println(
 				"f = apply(d, 1, function(x) { " +
 						"fisher.test(rbind(c(x[1],x[2]), c(x[3],x[4])), alternative='two.sided') " +
 						"})"
-				);
+				);*/
+		sout.println("f = apply(d, 1, function(x) {chisq.test(rbind(c(x[1],x[2]), c(x[3],x[4])))})");
 		sout.println("p = as.numeric(lapply(f, function(x) { x$p.value }))");
-		sout.println("q = qvalue(p)$qvalue");
-		sout.println("write.table(cbind(p, q), file='" + tmpR.getAbsolutePath() + "', col.names=F, row.names=F)");
+		sout.println("p[p > 1] = 1");
+		sout.println("q = qvalue(p)");
+		sout.println("write.table(cbind(q$pvalues, q$qvalues), file='" + tmpR.getAbsolutePath() + "', col.names=F, row.names=F)");
 		sout.close();
 
 		//Write the data
@@ -119,11 +121,13 @@ public class ComputeQValues implements Operation<SCWList> {
 		for (int i = 0; i < controlIslandsS.size(); i++) {
 			for (int j = 0; j < controlIslandsS.size(i); j++) {
 				// TODO: double check it's correct
-				int a = (int) sampleIslandsS.get(i, j).getScore();
-				int b = (int) sampleIslandsG1.get(i, j).getScore();
-				int c = (int) controlIslandsS.get(i, j).getScore();
-				int d = (int) controlIslandsG1.get(i, j).getScore();
-				dout.println(a + "\t" + b + "\t" + c + "\t" + d);
+				long a = (long) sampleIslandsS.get(i, j).getScore();
+				long b = (long) sampleIslandsG1.get(i, j).getScore();
+				long c = (long) controlIslandsS.get(i, j).getScore();
+				long d = (long) controlIslandsG1.get(i, j).getScore();
+				if ((a != 0) || (b != 0) || (c != 0) || (d != 0)) {
+					dout.println(a + "\t" + b + "\t" + c + "\t" + d);
+				}
 			}
 		}
 		dout.close();
@@ -139,12 +143,18 @@ public class ComputeQValues implements Operation<SCWList> {
 		for (int i = 0; i < controlIslandsS.size(); i++) {
 			Chromosome currentChromo = projectChromosomes.get(i);
 			for (int j = 0; j < controlIslandsS.size(i); j++) {
-				String[] cols = in.readLine().split(" ", 2);
-				//double pValue = Double.parseDouble(cols[0]);
-				float qValue = Float.parseFloat(cols[1]);
-				int start = controlIslandsS.get(i, j).getStart();
-				int stop = controlIslandsS.get(i, j).getStop();
-				resultListBuilder.addElementToBuild(currentChromo, start, stop, qValue);
+				long a = (long) sampleIslandsS.get(i, j).getScore();
+				long b = (long) sampleIslandsG1.get(i, j).getScore();
+				long c = (long) controlIslandsS.get(i, j).getScore();
+				long d = (long) controlIslandsG1.get(i, j).getScore();
+				if ((a != 0) || (b != 0) || (c != 0) || (d != 0)) {
+					String[] cols = in.readLine().split(" ", 2);
+					//double pValue = Double.parseDouble(cols[0]);
+					float qValue = Float.parseFloat(cols[1]);
+					int start = controlIslandsS.get(i, j).getStart();
+					int stop = controlIslandsS.get(i, j).getStop();
+					resultListBuilder.addElementToBuild(currentChromo, start, stop, qValue);
+				}
 			}
 		}
 		in.close();

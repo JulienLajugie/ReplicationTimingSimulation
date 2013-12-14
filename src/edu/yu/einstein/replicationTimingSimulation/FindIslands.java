@@ -86,14 +86,16 @@ public class FindIslands implements Operation<GeneList> {
 					int islandStop = currentList.get(0).getStop();
 					int i = 1;
 					while ((i < currentList.size()) && !stopped) {
-						boolean isPostive = currentList.get(i).getScore() > 0;
-						if (isPostive != wasPositive) {
-							SimpleGene geneToAdd = new SimpleGene(null, Strand.FIVE, islandStart, islandStop, 1,SCWListViews.createGenericSCWListView(islandStart, islandStop, 1));
-							resultListBuilder.addElementToBuild(currentChromosome, geneToAdd);
-							wasPositive = isPostive;
-							islandStart = currentList.get(i).getStart();
+						if (currentList.get(i).getScore() != 0) {
+							boolean isPostive = currentList.get(i).getScore() > 0;
+							if (isPostive != wasPositive) {
+								SimpleGene geneToAdd = new SimpleGene(null, Strand.FIVE, islandStart, islandStop, 1,SCWListViews.createGenericSCWListView(islandStart, islandStop, 1));
+								resultListBuilder.addElementToBuild(currentChromosome, geneToAdd);
+								wasPositive = isPostive;
+								islandStart = currentList.get(i).getStart();
+							}
+							islandStop = currentList.get(i).getStop();
 						}
-						islandStop = currentList.get(i).getStop();
 						i++;
 					}
 					SimpleGene geneToAdd = new SimpleGene(null, Strand.FIVE, islandStart, islandStop, 1,SCWListViews.createGenericSCWListView(islandStart, islandStop, 1));

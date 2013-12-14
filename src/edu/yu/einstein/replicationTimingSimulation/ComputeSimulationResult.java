@@ -149,14 +149,24 @@ public class ComputeSimulationResult implements Operation<SimulationResult> {
 	 * @return true if at least one element of the window list overlap the specified window. False otherwise
 	 */
 	private boolean hasOverlap(ChromosomeWindow window, ListView<? extends ChromosomeWindow> windowList) {
+		if (windowList.isEmpty()) {
+			return false;
+		}
 		int indexFound = ListViews.binarySearch(windowList, window);
 		if (indexFound >= 0) {
 			return true;
 		} else {
 			int indexBefore = -indexFound - 2;
+
 			int indexAfter = -indexFound - 1;
-			return (windowList.get(indexBefore).getStop() > window.getStart()) ||
-					(windowList.get(indexAfter).getStart() < window.getStop());
+			if (indexBefore < 0) {
+				return windowList.get(indexAfter).getStart() < window.getStop();
+			} else if (indexAfter >= windowList.size()) {
+				return windowList.get(indexBefore).getStop() > window.getStart();
+			} else {
+				return (windowList.get(indexBefore).getStop() > window.getStart()) ||
+						(windowList.get(indexAfter).getStart() < window.getStop());
+			}
 		}
 	}
 

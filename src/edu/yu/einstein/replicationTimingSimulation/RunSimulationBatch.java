@@ -69,13 +69,13 @@ public class RunSimulationBatch {
 	}
 
 	// Island sizes to consider for the simulation
-	//private final static int[] islandSizes = {125000, 250000, 500000, 1000000, 2000000, 5000000};
+	private final static int[] islandSizes = {125000, 250000, 500000, 1000000, 2000000};
 
 	// Percentage of reads to add for the simulation
-	//private final static double[] pctReadToAdds = {0.05, 0.1, 0.2, 0.3, 0.4, 0.5};
+	private final static double[] pctReadToAdds = {0.05, 0.1, 0.2, 0.3, 0.4, 0.5};
 
-	private final static int[] islandSizes = {500000};
-	private final static double[] pctReadToAdds = {0.1};
+	//private final static int[] islandSizes = {500000};
+	//private final static double[] pctReadToAdds = {0.05, 0.1, 0.2, 0.3, 0.4, 0.5};
 
 
 	/**
@@ -121,24 +121,25 @@ public class RunSimulationBatch {
 
 		try {
 
-		File sFile = new File(parameters.sFile);
-		File g1File = new File(parameters.g1File);
-		File outFile = new File(parameters.outFile);
+			File sFile = new File(parameters.sFile);
+			File g1File = new File(parameters.g1File);
+			File outFile = new File(parameters.outFile);
 
-		initManagers();
+			initManagers();
 
-		SCWList sList = loadInputFile(sFile);
-		SCWList g1List = loadInputFile(g1File);
+			SCWList sList = loadInputFile(sFile);
+			SCWList g1List = loadInputFile(g1File);
 
-		List<SimulationResult> resultList = new ArrayList<>();
-		for (double pctReadToAdd: pctReadToAdds) {
-		for (int islandSize: islandSizes) {
-				SimulationResult result = new SingleSimulation(islandSize, pctReadToAdd, sList, g1List).compute();
-				resultList.add(result);
+			List<SimulationResult> resultList = new ArrayList<SimulationResult>();
+			for (double pctReadToAdd: pctReadToAdds) {
+				for (int islandSize: islandSizes) {
+					SimulationResult result = new SingleSimulation(islandSize, pctReadToAdd, sList, g1List).compute();
+					resultList.add(result);
+					System.gc();System.gc();System.gc();System.gc();System.gc();System.gc();
+				}
 			}
-		}
 
-		printResult(outFile, resultList);
+			printResult(outFile, resultList);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

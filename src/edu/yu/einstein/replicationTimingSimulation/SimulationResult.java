@@ -44,8 +44,8 @@ public class SimulationResult {
 	public SimulationResult(int islandSize, double percentageReadsAdded, int islandCount, int falsePositiveCount, int falseNegativeCount) {
 		this.islandSize = islandSize;
 		this.percentageReadsAdded = percentageReadsAdded;
-		falsePositiveRate = falsePositiveCount / islandCount;
-		falseNegativeRate = falseNegativeCount / islandCount;
+		falsePositiveRate = falsePositiveCount / (double) islandCount;
+		falseNegativeRate = falseNegativeCount / (double) islandCount;
 	}
 
 
