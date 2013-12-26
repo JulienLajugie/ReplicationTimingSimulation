@@ -28,14 +28,18 @@ import java.io.PrintWriter;
 import edu.yu.einstein.genplay.core.operation.Operation;
 import edu.yu.einstein.genplay.core.operation.SCWList.MCWLOInvertMask;
 import edu.yu.einstein.genplay.core.operation.SCWList.SCWLOConvertIntoBinList;
+import edu.yu.einstein.genplay.core.operation.SCWList.SCWLOConvertIntoGeneList;
 import edu.yu.einstein.genplay.core.operation.SCWList.SCWLOConvertIntoSimpleSCWList;
 import edu.yu.einstein.genplay.core.operation.SCWList.SCWLOFilterThreshold;
 import edu.yu.einstein.genplay.core.operation.SCWList.SCWLOOperationWithConstant;
 import edu.yu.einstein.genplay.core.operation.SCWList.SCWLOTwoLayers;
+import edu.yu.einstein.genplay.core.operation.binList.BLOFindIslands;
 import edu.yu.einstein.genplay.core.operation.binList.BLOGauss;
 import edu.yu.einstein.genplay.core.operation.binList.BLOTwoLayers;
+import edu.yu.einstein.genplay.core.operation.geneList.GLOMergeGeneLists;
 import edu.yu.einstein.genplay.core.operation.geneList.GLOScoreFromSCWList;
 import edu.yu.einstein.genplay.dataStructure.enums.GeneScoreType;
+import edu.yu.einstein.genplay.dataStructure.enums.IslandResultType;
 import edu.yu.einstein.genplay.dataStructure.enums.OperationWithConstant;
 import edu.yu.einstein.genplay.dataStructure.enums.SCWListType;
 import edu.yu.einstein.genplay.dataStructure.enums.ScoreOperation;
@@ -52,6 +56,10 @@ import edu.yu.einstein.genplay.dataStructure.scoredChromosomeWindow.ScoredChromo
  */
 public class SingleSimulation implements Operation<SimulationResult> {
 
+	private final static int		ISLAND_DISTANCE = 4000000; 	// space between 2 island starts position
+
+	private final static float		Q_VALUE_CUTOFF = 0.05f;		// cutoff for the qValue
+	private final static boolean	USE_ISLAND_FINDER = true;	// true to use the island finder to define the island
 	/**
 	 * Prints the specified {@link ListView} in a temporary file with the specified name prefix
 	 * @param data
@@ -70,8 +78,6 @@ public class SingleSimulation implements Operation<SimulationResult> {
 		dout.close();
 	}
 
-	private final int		ISLAND_DISTANCE = 4000000; 	// space between 2 island starts position
-	private final float		Q_VALUE_CUTOFF = 0.05f;		// cutoff for the qValue
 	private final int 		islandSize;					// size of the islands to use in the simulation
 	private final double 	percentageReadToAdd;		// percentage of reads to add in the S phase in the islands
 	private final SCWList 	sList;						// s phase data
@@ -168,7 +174,18 @@ public class SingleSimulation implements Operation<SimulationResult> {
 
 		// 8 - call islands
 		System.out.println("SingleSimulation.compute() - 8");
-		GeneList islands = new FindIslands(sampleCtrlDifference).compute();
+		GeneList islands;
+		if (USE_ISLAND_FINDER) {
+			BinList positiveSampleCtrlDifference = (BinList) new SCWLOFilterThreshold(sampleCtrlDifference, 0, Float.POSITIVE_INFINITY, false).compute();
+			BinList negativesSampleCtrlDifference = (BinList) new SCWLOOperationWithConstant(sampleCtrlDifference, OperationWithConstant.MULTIPLICATION, -1f, false).compute();
+			negativesSampleCtrlDifference = (BinList) new SCWLOFilterThreshold(negativesSampleCtrlDifference, 0, Float.POSITIVE_INFINITY, false).compute();
+			GeneList positiveIslands = findIslandUsingIslandFinder(positiveSampleCtrlDifference);
+			GeneList negativeIslands = findIslandUsingIslandFinder(negativesSampleCtrlDifference);
+			islands = new GLOMergeGeneLists(positiveIslands, negativeIslands).compute();
+
+		} else {
+			islands = new FindIslands(sampleCtrlDifference).compute();
+		}
 
 		// 9 - score islands
 		System.out.println("SingleSimulation.compute() - 9");
@@ -194,6 +211,28 @@ public class SingleSimulation implements Operation<SimulationResult> {
 
 		return simulationResult;
 	}
+
+
+	/**
+	 * Find the islands in the input genelist using the genplay island finder algorithm
+	 * @param input
+	 * @return
+	 * @throws Exception
+	 */
+	private GeneList findIslandUsingIslandFinder(BinList input) throws Exception {
+		BLOFindIslands bloFindIslands = new BLOFindIslands(input);
+		bloFindIslands.getIsland().setWindowMinValue(0.1);
+		bloFindIslands.getIsland().setGap(100);
+		bloFindIslands.getIsland().setIslandMinScore(0);
+		bloFindIslands.getIsland().setIslandMinLength(100);
+		IslandResultType[] resType = {IslandResultType.IFSCORE};
+		bloFindIslands.setList(resType);
+		BinList resBinList = bloFindIslands.compute()[0];
+		SCWList resMaskList = new SCWLOConvertIntoSimpleSCWList(resBinList, SCWListType.MASK).compute();
+		GeneList resGeneList = new SCWLOConvertIntoGeneList(resMaskList).compute();
+		return resGeneList;
+	}
+
 
 	@Override
 	public String getDescription() {

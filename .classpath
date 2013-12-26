@@ -4,6 +4,6 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="externalJars/colt.jar"/>
 	<classpathentry kind="lib" path="externalJars/jcommander-1.19.jar"/>
-	<classpathentry kind="lib" path="externalJars/GenPlay985.jar" sourcepath="/GenPlay - New Data Structures"/>
+	<classpathentry kind="lib" path="externalJars/GenPlay985.jar" sourcepath="/GenPlay"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
