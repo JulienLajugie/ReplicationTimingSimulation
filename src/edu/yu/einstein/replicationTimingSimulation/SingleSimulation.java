@@ -28,6 +28,7 @@ import java.io.PrintWriter;
 import edu.yu.einstein.genplay.core.operation.Operation;
 import edu.yu.einstein.genplay.core.operation.SCWList.MCWLOInvertMask;
 import edu.yu.einstein.genplay.core.operation.SCWList.SCWLOConvertIntoBinList;
+import edu.yu.einstein.genplay.core.operation.SCWList.SCWLOConvertIntoSimpleSCWList;
 import edu.yu.einstein.genplay.core.operation.SCWList.SCWLOFilterThreshold;
 import edu.yu.einstein.genplay.core.operation.SCWList.SCWLOOperationWithConstant;
 import edu.yu.einstein.genplay.core.operation.SCWList.SCWLOTwoLayers;
@@ -36,6 +37,7 @@ import edu.yu.einstein.genplay.core.operation.binList.BLOTwoLayers;
 import edu.yu.einstein.genplay.core.operation.geneList.GLOScoreFromSCWList;
 import edu.yu.einstein.genplay.dataStructure.enums.GeneScoreType;
 import edu.yu.einstein.genplay.dataStructure.enums.OperationWithConstant;
+import edu.yu.einstein.genplay.dataStructure.enums.SCWListType;
 import edu.yu.einstein.genplay.dataStructure.enums.ScoreOperation;
 import edu.yu.einstein.genplay.dataStructure.list.genomeWideList.SCWList.SCWList;
 import edu.yu.einstein.genplay.dataStructure.list.genomeWideList.SCWList.binList.BinList;
@@ -69,6 +71,7 @@ public class SingleSimulation implements Operation<SimulationResult> {
 	}
 
 	private final int		ISLAND_DISTANCE = 4000000; 	// space between 2 island starts position
+	private final float		Q_VALUE_CUTOFF = 0.05f;		// cutoff for the qValue
 	private final int 		islandSize;					// size of the islands to use in the simulation
 	private final double 	percentageReadToAdd;		// percentage of reads to add in the S phase in the islands
 	private final SCWList 	sList;						// s phase data
@@ -118,7 +121,7 @@ public class SingleSimulation implements Operation<SimulationResult> {
 		System.out.println("SingleSimulation.compute() - 2c");
 		SCWList islandMask = new GenerateIslands(ISLAND_DISTANCE, islandSize).compute();
 		SCWList islandInvertedMask = new MCWLOInvertMask(islandMask).compute();
-		//printSCWInTmpFile(islandMask.get(0), "island_mask");
+		//printSCWInTmpFile(islandMask.get(0), "inislands_" + islandSize + "_" + percentageReadToAdd + "_");
 
 		// 2d - sum the island with reads added with the baseline
 		System.out.println("SingleSimulation.compute() - 2d");
@@ -155,16 +158,17 @@ public class SingleSimulation implements Operation<SimulationResult> {
 		BinList maskSample = (BinList) new SCWLOOperationWithConstant(sampleSG1, OperationWithConstant.UNIQUE_SCORE, 1, false).compute();
 		controlSG1 = (BinList) new BLOTwoLayers(maskSample, controlSG1, ScoreOperation.MULTIPLICATION).compute();
 		sampleSG1 = (BinList) new BLOTwoLayers(maskControl, sampleSG1, ScoreOperation.MULTIPLICATION).compute();
+		//printSCWInTmpFile(controlSG1.get(0), "controlSG1_" + islandSize + "_" + percentageReadToAdd + "_");
+		//printSCWInTmpFile(sampleSG1.get(0), "sampleSG1_" + islandSize + "_" + percentageReadToAdd + "_");
 
 		// 7 - compute sample - control difference
 		System.out.println("SingleSimulation.compute() - 7");
 		BinList sampleCtrlDifference = (BinList) new BLOTwoLayers(sampleSG1, controlSG1, ScoreOperation.SUBTRACTION).compute();
-		//printSCWInTmpFile(sampleCtrlDifference.get(0), "difference");
+		//printSCWInTmpFile(sampleCtrlDifference.get(0), "difference_" + islandSize + "_" + percentageReadToAdd + "_");
 
 		// 8 - call islands
 		System.out.println("SingleSimulation.compute() - 8");
 		GeneList islands = new FindIslands(sampleCtrlDifference).compute();
-		//printSCWInTmpFile(islands.get(0), "islands");
 
 		// 9 - score islands
 		System.out.println("SingleSimulation.compute() - 9");
@@ -176,10 +180,13 @@ public class SingleSimulation implements Operation<SimulationResult> {
 		// 10 - compute fisher exact test and retrieve qvalues
 		System.out.println("SingleSimulation.compute() - 10");
 		SCWList islandsQValues = new ComputeQValues(controlIslandsS, controlIslandsG1, sampleIslandsS, sampleIslandsG1).compute();
+		//printSCWInTmpFile(islandsQValues.get(0), "islands_before_filter" + islandSize + "_" + percentageReadToAdd + "_");
 
 		// 11 - filter islands with qvalue under 0.05
 		System.out.println("SingleSimulation.compute() - 11");
-		SCWList filteredIslands = new SCWLOFilterThreshold(islandsQValues, 0f, 0.5f, false).compute();
+		SCWList filteredIslands = new SCWLOFilterThreshold(islandsQValues, 0, Q_VALUE_CUTOFF, false).compute();
+		filteredIslands = new SCWLOConvertIntoSimpleSCWList(filteredIslands, SCWListType.MASK).compute();
+		//printSCWInTmpFile(filteredIslands.get(0), "islands_after_filter" + islandSize + "_" + percentageReadToAdd + "_");
 
 		// 12 - compute false positive and false negatives
 		System.out.println("SingleSimulation.compute() - 12");

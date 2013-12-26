@@ -14,7 +14,7 @@
  *
  *     You should have received a copy of the GNU General Public License
  *     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * 
+ *
  *     Authors:	Julien Lajugie <julien.lajugie@einstein.yu.edu>
  *     			Nicolas Fourel <nicolas.fourel@einstein.yu.edu>
  *     Website: <http://genplay.einstein.yu.edu>
@@ -37,15 +37,20 @@ public class SimulationResult {
 	 * Creates an instance of {@link SimulationResult}
 	 * @param islandSize size of the islands used in the simulation
 	 * @param percentageReadsAdded number of reads added to the island (eg: 0.1 if there were 10% more reads)
-	 * @param islandCount number of island generated for the simulation
+	 * @param islandCreatedCount number of island generated for the simulation
+	 * @param islandFoundCount number of island detected during the simulation
 	 * @param falsePositiveCount number of islands found that were not generated
 	 * @param falseNegativeCount number of islands missed
 	 */
-	public SimulationResult(int islandSize, double percentageReadsAdded, int islandCount, int falsePositiveCount, int falseNegativeCount) {
+	public SimulationResult(int islandSize, double percentageReadsAdded, int islandCreatedCount, int islandFoundCount, int falsePositiveCount, int falseNegativeCount) {
 		this.islandSize = islandSize;
 		this.percentageReadsAdded = percentageReadsAdded;
-		falsePositiveRate = falsePositiveCount / (double) islandCount;
-		falseNegativeRate = falseNegativeCount / (double) islandCount;
+		if (islandFoundCount == 0) {
+			falsePositiveRate = 0;
+		} else {
+			falsePositiveRate = falsePositiveCount / (double) islandFoundCount;
+		}
+		falseNegativeRate = falseNegativeCount / (double) islandCreatedCount;
 	}
 
 

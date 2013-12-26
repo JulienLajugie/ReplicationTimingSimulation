@@ -14,7 +14,7 @@
  *
  *     You should have received a copy of the GNU General Public License
  *     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * 
+ *
  *     Authors:	Julien Lajugie <julien.lajugie@einstein.yu.edu>
  *     			Nicolas Fourel <nicolas.fourel@einstein.yu.edu>
  *     Website: <http://genplay.einstein.yu.edu>
@@ -71,7 +71,9 @@ public class ComputeSimulationResult implements Operation<SimulationResult> {
 
 	@Override
 	public SimulationResult compute() throws Exception {
-		int islandCount = (int) islandMasks.getStatistics().getWindowCount();
+		int islandCreatedCount = (int) islandMasks.getStatistics().getWindowCount();
+		int islandFoundCount = (int) islandsFound.getStatistics().getWindowCount();
+
 		int falsePositiveCount = 0;
 		int falseNegativeCount = 0;
 
@@ -121,7 +123,7 @@ public class ComputeSimulationResult implements Operation<SimulationResult> {
 			falsePositiveCount += currentResult[0];
 			falseNegativeCount += currentResult[1];
 		}
-		return new SimulationResult(islandSize, percentageReadsAdded, islandCount, falsePositiveCount, falseNegativeCount);
+		return new SimulationResult(islandSize, percentageReadsAdded, islandCreatedCount, islandFoundCount, falsePositiveCount, falseNegativeCount);
 	}
 
 

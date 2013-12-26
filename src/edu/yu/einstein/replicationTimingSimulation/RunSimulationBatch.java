@@ -25,6 +25,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -43,9 +44,11 @@ import edu.yu.einstein.genplay.core.IO.genomeListLoader.AssemblyListLoader;
 import edu.yu.einstein.genplay.core.manager.project.ProjectManager;
 import edu.yu.einstein.genplay.dataStructure.chromosome.Chromosome;
 import edu.yu.einstein.genplay.dataStructure.enums.ScoreOperation;
+import edu.yu.einstein.genplay.dataStructure.enums.ScorePrecision;
 import edu.yu.einstein.genplay.dataStructure.genome.Assembly;
 import edu.yu.einstein.genplay.dataStructure.list.genomeWideList.SCWList.SCWList;
 import edu.yu.einstein.genplay.dataStructure.list.genomeWideList.SCWList.SCWListFactory;
+import edu.yu.einstein.genplay.dataStructure.list.primitiveList.PrimitiveList;
 
 /**
  * Class with main method to start the simulation
@@ -72,10 +75,10 @@ public class RunSimulationBatch {
 	private final static int[] islandSizes = {125000, 250000, 500000, 1000000, 2000000};
 
 	// Percentage of reads to add for the simulation
-	private final static double[] pctReadToAdds = {0.05, 0.1, 0.2, 0.3, 0.4, 0.5};
+	private final static double[] pctReadToAdds = {0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5};
 
-	//private final static int[] islandSizes = {500000};
-	//private final static double[] pctReadToAdds = {0.05, 0.1, 0.2, 0.3, 0.4, 0.5};
+	//private final static int[] islandSizes = {1000000};
+	//private final static double[] pctReadToAdds = {0.05, 0.1, 0.2, 0.3, 0.4};
 
 
 	/**
@@ -95,6 +98,8 @@ public class RunSimulationBatch {
 		assembly.setChromosomeList(chrList);
 		ProjectManager.getInstance().setAssembly(assembly);
 		ProjectManager.getInstance().updateChromosomeList();
+		// set the precision of the data to 32 bit
+		PrimitiveList.setScorePrecision(ScorePrecision.PRECISION_32BIT);
 	}
 
 
@@ -118,10 +123,10 @@ public class RunSimulationBatch {
 	public static void main(String[] args) {
 		Args parameters = new Args();
 		new JCommander(parameters, args);
-
+		File sFile;
 		try {
 
-			File sFile = new File(parameters.sFile);
+			sFile = new File(parameters.sFile);
 			File g1File = new File(parameters.g1File);
 			File outFile = new File(parameters.outFile);
 
@@ -133,6 +138,11 @@ public class RunSimulationBatch {
 			List<SimulationResult> resultList = new ArrayList<SimulationResult>();
 			for (double pctReadToAdd: pctReadToAdds) {
 				for (int islandSize: islandSizes) {
+					System.out.println("*** Simulation with "
+							+ (pctReadToAdd * 100)
+							+ "% reads added on islands of "
+							+ NumberFormat.getIntegerInstance().format(islandSize)
+							+ "bp starting ***");
 					SimulationResult result = new SingleSimulation(islandSize, pctReadToAdd, sList, g1List).compute();
 					resultList.add(result);
 					System.gc();System.gc();System.gc();System.gc();System.gc();System.gc();
@@ -142,6 +152,8 @@ public class RunSimulationBatch {
 			printResult(outFile, resultList);
 		} catch (Exception e) {
 			e.printStackTrace();
+		} finally {
+			System.exit(0);
 		}
 	}
 

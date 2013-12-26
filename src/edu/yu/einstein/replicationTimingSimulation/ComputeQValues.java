@@ -93,7 +93,6 @@ public class ComputeQValues implements Operation<SCWList> {
 
 
 	private SCWList performFisherExactTestAndRetrieveQValues() throws IOException, InterruptedException, CloneNotSupportedException, InvalidParameterException, ExecutionException {
-		//File tmpDir = new File("/home/jlajugie/tmp");
 		File tmpD = File.createTempFile("fish_in_", ".txt");
 		File tmpR = File.createTempFile("fish_out_", ".txt");
 		File tmpScript = File.createTempFile("fish", ".R");
@@ -104,11 +103,6 @@ public class ComputeQValues implements Operation<SCWList> {
 		PrintWriter sout = new PrintWriter(tmpScript);
 		sout.println("library(qvalue)");
 		sout.println("d = read.table('" + tmpD.getAbsolutePath() + "')");
-		/*sout.println(
-				"f = apply(d, 1, function(x) { " +
-						"fisher.test(rbind(c(x[1],x[2]), c(x[3],x[4])), alternative='two.sided') " +
-						"})"
-				);*/
 		sout.println("f = apply(d, 1, function(x) {chisq.test(rbind(c(x[1],x[2]), c(x[3],x[4])))})");
 		sout.println("p = as.numeric(lapply(f, function(x) { x$p.value }))");
 		sout.println("p[p > 1] = 1");
@@ -120,7 +114,6 @@ public class ComputeQValues implements Operation<SCWList> {
 		PrintWriter dout = new PrintWriter(tmpD);
 		for (int i = 0; i < controlIslandsS.size(); i++) {
 			for (int j = 0; j < controlIslandsS.size(i); j++) {
-				// TODO: double check it's correct
 				long a = (long) sampleIslandsS.get(i, j).getScore();
 				long b = (long) sampleIslandsG1.get(i, j).getScore();
 				long c = (long) controlIslandsS.get(i, j).getScore();
@@ -148,12 +141,16 @@ public class ComputeQValues implements Operation<SCWList> {
 				long c = (long) controlIslandsS.get(i, j).getScore();
 				long d = (long) controlIslandsG1.get(i, j).getScore();
 				if ((a != 0) || (b != 0) || (c != 0) || (d != 0)) {
+					// pValues in first column, qValues in second column
 					String[] cols = in.readLine().split(" ", 2);
-					//double pValue = Double.parseDouble(cols[0]);
-					float qValue = Float.parseFloat(cols[1]);
+					double qValue = Double.parseDouble(cols[1]);
+					// don't want the really small values to be rounded down to 0
+					if (qValue < Float.MIN_NORMAL) {
+						qValue = Float.MIN_NORMAL;
+					}
 					int start = controlIslandsS.get(i, j).getStart();
 					int stop = controlIslandsS.get(i, j).getStop();
-					resultListBuilder.addElementToBuild(currentChromo, start, stop, qValue);
+					resultListBuilder.addElementToBuild(currentChromo, start, stop, (float) qValue);
 				}
 			}
 		}

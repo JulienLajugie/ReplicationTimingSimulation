@@ -98,11 +98,11 @@ public class ResampleLayers implements Operation<SCWList[]>{
 							int readToAdd = (int) Math.round(oldK * percentageToAdd);
 							int newK = oldK + readToAdd;
 							int newN = oldN + readToAdd;
-							newS = Binomial.staticNextInt(newK, newK / (double) newN);
+							newS = Binomial.staticNextInt(newN, newK / (double) newN);
 							newG1 = newN - newS;
-							sListBuilder.addElementToBuild(chromosome, currentSList.get(j).getStart(), currentSList.get(j).getStop(), newS);
-							g1ListBuilder.addElementToBuild(chromosome, currentG1List.get(j).getStart(), currentG1List.get(j).getStop(), newG1);
 						}
+						sListBuilder.addElementToBuild(chromosome, currentSList.get(j).getStart(), currentSList.get(j).getStop(), newS);
+						g1ListBuilder.addElementToBuild(chromosome, currentG1List.get(j).getStart(), currentG1List.get(j).getStop(), newG1);
 					}
 					// tell the operation pool that a chromosome is done
 					op.notifyDone();
