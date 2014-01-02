@@ -78,7 +78,7 @@ public class RunSimulationBatch {
 	private final static double[] pctReadToAdds = {0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5};
 
 	//private final static int[] islandSizes = {1000000};
-	//private final static double[] pctReadToAdds = {0.05, 0.1, 0.2, 0.3, 0.4};
+	//private final static double[] pctReadToAdds = {0.05, 0.1, 0.2};
 
 
 	/**

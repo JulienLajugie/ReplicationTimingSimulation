@@ -125,7 +125,7 @@ public class SingleSimulation implements Operation<SimulationResult> {
 
 		// 2c - generate islands mask list and its inverse
 		System.out.println("SingleSimulation.compute() - 2c");
-		SCWList islandMask = new GenerateIslands(ISLAND_DISTANCE, islandSize).compute();
+		SCWList islandMask = new GenerateIslands(ISLAND_DISTANCE, islandSize, g1List).compute();
 		SCWList islandInvertedMask = new MCWLOInvertMask(islandMask).compute();
 		//printSCWInTmpFile(islandMask.get(0), "inislands_" + islandSize + "_" + percentageReadToAdd + "_");
 
@@ -182,7 +182,7 @@ public class SingleSimulation implements Operation<SimulationResult> {
 			GeneList positiveIslands = findIslandUsingIslandFinder(positiveSampleCtrlDifference);
 			GeneList negativeIslands = findIslandUsingIslandFinder(negativesSampleCtrlDifference);
 			islands = new GLOMergeGeneLists(positiveIslands, negativeIslands).compute();
-
+			islands = flattenGeneList(islands);
 		} else {
 			islands = new FindIslands(sampleCtrlDifference).compute();
 		}
@@ -221,8 +221,8 @@ public class SingleSimulation implements Operation<SimulationResult> {
 	 */
 	private GeneList findIslandUsingIslandFinder(BinList input) throws Exception {
 		BLOFindIslands bloFindIslands = new BLOFindIslands(input);
-		bloFindIslands.getIsland().setWindowMinValue(0.1);
-		bloFindIslands.getIsland().setGap(100);
+		bloFindIslands.getIsland().setWindowMinValue(0.01);
+		bloFindIslands.getIsland().setGap(1000);
 		bloFindIslands.getIsland().setIslandMinScore(0);
 		bloFindIslands.getIsland().setIslandMinLength(100);
 		IslandResultType[] resType = {IslandResultType.IFSCORE};
@@ -231,6 +231,18 @@ public class SingleSimulation implements Operation<SimulationResult> {
 		SCWList resMaskList = new SCWLOConvertIntoSimpleSCWList(resBinList, SCWListType.MASK).compute();
 		GeneList resGeneList = new SCWLOConvertIntoGeneList(resMaskList).compute();
 		return resGeneList;
+	}
+
+
+	/**
+	 * Merge overlapping genes of gene list together
+	 * @param geneList a gene list
+	 * @return a new gene list
+	 * @throws Exception
+	 */
+	private GeneList flattenGeneList(GeneList geneList) throws Exception {
+		SCWList mask = new SCWLOConvertIntoSimpleSCWList(geneList, SCWListType.MASK).compute();
+		return new SCWLOConvertIntoGeneList(mask).compute();
 	}
 
 

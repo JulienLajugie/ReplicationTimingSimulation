@@ -101,13 +101,14 @@ public class ComputeQValues implements Operation<SCWList> {
 		//data = matrix with columns a, b, c, d
 		//test will be performed on each row
 		PrintWriter sout = new PrintWriter(tmpScript);
-		sout.println("library(qvalue)");
+		//sout.println("library(qvalue)");
 		sout.println("d = read.table('" + tmpD.getAbsolutePath() + "')");
 		sout.println("f = apply(d, 1, function(x) {chisq.test(rbind(c(x[1],x[2]), c(x[3],x[4])))})");
 		sout.println("p = as.numeric(lapply(f, function(x) { x$p.value }))");
 		sout.println("p[p > 1] = 1");
-		sout.println("q = qvalue(p)");
-		sout.println("write.table(cbind(q$pvalues, q$qvalues), file='" + tmpR.getAbsolutePath() + "', col.names=F, row.names=F)");
+		sout.println("q <- p.adjust(p, method=\"fdr\")");
+		//sout.println("q = qvalue(p)");
+		sout.println("write.table(cbind(p, q), file='" + tmpR.getAbsolutePath() + "', col.names=F, row.names=F)");
 		sout.close();
 
 		//Write the data
