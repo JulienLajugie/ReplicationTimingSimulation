@@ -67,8 +67,8 @@ public class RunSimulationBatch {
 		@Parameter(names = "-g1", description = "File with replication timming data for the G1 phase")
 		private String g1File;
 
-		@Parameter(names = "-out", description = "Output file with the result of the simulation")
-		private String outFile;
+		@Parameter(names = "-out", description = "Output directory for the results of the simulation")
+		private String outDir;
 	}
 
 	// Island sizes to consider for the simulation
@@ -77,9 +77,8 @@ public class RunSimulationBatch {
 	// Percentage of reads to add for the simulation
 	private final static double[] pctReadToAdds = {0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5};
 
-	//private final static int[] islandSizes = {1000000};
-	//private final static double[] pctReadToAdds = {0.05, 0.1, 0.2};
-
+	//private final static int[] islandSizes = {125000, 250000, 500000, 1000000, 2000000};
+	//private final static double[] pctReadToAdds = {0.05, 0.1, 0.15, 0.2, 0.3};
 
 	/**
 	 * Initializes genplay project manager
@@ -128,7 +127,8 @@ public class RunSimulationBatch {
 
 			sFile = new File(parameters.sFile);
 			File g1File = new File(parameters.g1File);
-			File outFile = new File(parameters.outFile);
+			File outDir = new File(parameters.outDir);
+			File outFile = new File(outDir.getAbsolutePath() + "simulation_summary.tsv");
 
 			initManagers();
 
@@ -143,9 +143,8 @@ public class RunSimulationBatch {
 							+ "% reads added on islands of "
 							+ NumberFormat.getIntegerInstance().format(islandSize)
 							+ "bp starting ***");
-					SimulationResult result = new SingleSimulation(islandSize, pctReadToAdd, sList, g1List).compute();
+					SimulationResult result = new SingleSimulation(outDir, islandSize, pctReadToAdd, sList, g1List).compute();
 					resultList.add(result);
-					System.gc();System.gc();System.gc();System.gc();System.gc();System.gc();
 				}
 			}
 
