@@ -49,7 +49,9 @@ public class ComputeSimulationResult implements Operation<SimulationResult> {
 	private final double 	percentageReadsAdded;	// number of reads added to the island (eg: 0.1 if there were 10% more reads)
 	private final SCWList 	islandMasks;			// scw list containing the island generated
 	private final SCWList 	islandsFound;			// scw list containing the island found during the simulation
+	private final float		SG1AverageDifference;	// average difference between S and G1 on the island after gaussing
 	private boolean			stopped = false;		// true if the operation must be stopped
+
 
 	/**
 	 * Creates an instance of {@link ComputeSimulationResult}.
@@ -60,12 +62,14 @@ public class ComputeSimulationResult implements Operation<SimulationResult> {
 	 * @param percentageReadsAdded number of reads added to the island (eg: 0.1 if there were 10% more reads)
 	 * @param islandMasks mask containing the island generated
 	 * @param islandsFound gene list containing the island found during the simulation
+	 * @param SG1AverageDifference average difference between S and G1 on the island after gaussing
 	 */
-	public ComputeSimulationResult(int islandSize, double percentageReadsAdded, SCWList islandMasks, SCWList islandsFound) {
+	public ComputeSimulationResult(int islandSize, double percentageReadsAdded, SCWList islandMasks, SCWList islandsFound, float SG1AverageDifference) {
 		this.islandSize = islandSize;
 		this.percentageReadsAdded = percentageReadsAdded;
 		this.islandMasks = islandMasks;
 		this.islandsFound = islandsFound;
+		this.SG1AverageDifference = SG1AverageDifference;
 	}
 
 
@@ -123,7 +127,13 @@ public class ComputeSimulationResult implements Operation<SimulationResult> {
 			falsePositiveCount += currentResult[0];
 			falseNegativeCount += currentResult[1];
 		}
-		return new SimulationResult(islandSize, percentageReadsAdded, islandCreatedCount, islandFoundCount, falsePositiveCount, falseNegativeCount);
+		// compute the average size of the islands
+		double islandSizeSum = islandsFound.getStatistics().getWindowLength();
+		int islandAverageSize = 0;
+		if (islandFoundCount != 0) {
+			islandAverageSize = (int) (islandSizeSum / islandFoundCount);
+		}
+		return new SimulationResult(islandSize, percentageReadsAdded, islandCreatedCount, islandFoundCount, falsePositiveCount, falseNegativeCount, islandAverageSize, SG1AverageDifference);
 	}
 
 

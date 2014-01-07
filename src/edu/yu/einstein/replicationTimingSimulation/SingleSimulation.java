@@ -24,6 +24,7 @@ package edu.yu.einstein.replicationTimingSimulation;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.text.NumberFormat;
 
 import edu.yu.einstein.genplay.core.operation.Operation;
 import edu.yu.einstein.genplay.core.operation.SCWList.MCWLOInvertMask;
@@ -56,15 +57,16 @@ import edu.yu.einstein.genplay.dataStructure.scoredChromosomeWindow.ScoredChromo
  */
 public class SingleSimulation implements Operation<SimulationResult> {
 
-	private final static int		ISLAND_DISTANCE 	= 4000000; 	// space between 2 island starts position
-	private final static float		Q_VALUE_CUTOFF 		= 0.05f;	// cutoff for the qValue
-	private final static boolean	USE_ISLAND_FINDER 	= true;		// true to use the island finder to define the island
-	private final static boolean	PRINT_PROGRESS 		= false;	// set to true to print progress info
-	private final static boolean	PRINT_FILES 		= true;		// set to true to print the bed files with the data from the simulation
-	private final static int		GAUSSIAN_MV_WIDTH 	= 400000;	// moving window width of the gaussian smoothing
-	private final static float		IF_MIN_WINDOW 		= 0.02f;	// island finder minimum window score parameter
-	private final static int 		IF_GAP 				= 500;		// island finder gap parameter
-	private final static int 		IF_MIN_LENGTH 		= 50;		// island finder island minimum length parameter
+	private final static int		ISLAND_DISTANCE 		= 4000000; 	// space between 2 island starts position
+	private final static int		READ_INCREASE_FACTOR 	= 1; 		// multiply the input reads by this factor
+	private final static float		Q_VALUE_CUTOFF 			= 0.05f;	// cutoff for the qValue
+	private final static boolean	USE_ISLAND_FINDER 		= true;		// true to use the island finder to define the island
+	private final static boolean	PRINT_PROGRESS 			= false;	// set to true to print progress info
+	private final static boolean	PRINT_FILES 			= true;		// set to true to print the bed files with the data from the simulation
+	private final static int		GAUSSIAN_MV_WIDTH 		= 400000;	// moving window width of the gaussian smoothing
+	private final static float		IF_MIN_WINDOW 			= 0.02f;	// island finder minimum window score parameter
+	private final static int 		IF_GAP 					= 500;		// island finder gap parameter
+	private final static int 		IF_MIN_LENGTH 			= 50;		// island finder island minimum length parameter
 
 	private final File		outputDir;					// directory for the output data
 	private final int 		islandSize;					// size of the islands to use in the simulation
@@ -98,7 +100,7 @@ public class SingleSimulation implements Operation<SimulationResult> {
 	public SimulationResult compute() throws Exception {
 		printProgress("SingleSimulation.compute() - 1");
 		// 1 - generate control lists
-		SCWList[] resampledList = new ResampleLayers(sList, g1List, 0).compute();
+		SCWList[] resampledList = new ResampleLayers(sList, g1List, 0, READ_INCREASE_FACTOR).compute();
 		SCWList controlS = resampledList[0];
 		SCWList controlG1 = resampledList[1];
 
@@ -106,13 +108,13 @@ public class SingleSimulation implements Operation<SimulationResult> {
 
 		// 2a - generate list with reads added
 		printProgress("SingleSimulation.compute() - 2a");
-		resampledList = new ResampleLayers(sList, g1List, percentageReadToAdd).compute();
+		resampledList = new ResampleLayers(sList, g1List, percentageReadToAdd, READ_INCREASE_FACTOR).compute();
 		SCWList resampledSReadAdded = resampledList[0];
 		SCWList resampledG1ReadAdded = resampledList[1];
 
 		// 2b - generate list with no reads added
 		printProgress("SingleSimulation.compute() - 2b");
-		resampledList = new ResampleLayers(sList, g1List, 0).compute();
+		resampledList = new ResampleLayers(sList, g1List, 0, READ_INCREASE_FACTOR).compute();
 		SCWList resampledSNoReadAdded = resampledList[0];
 		SCWList resampledG1NoReadAdded = resampledList[1];
 
@@ -120,7 +122,6 @@ public class SingleSimulation implements Operation<SimulationResult> {
 		printProgress("SingleSimulation.compute() - 2c");
 		SCWList islandMask = new GenerateIslands(ISLAND_DISTANCE, islandSize, g1List).compute();
 		SCWList islandInvertedMask = new MCWLOInvertMask(islandMask).compute();
-		//printSCWInTmpFile(islandMask.get(0), "inislands_" + islandSize + "_" + percentageReadToAdd + "_");
 
 		// 2d - sum the island with reads added with the baseline
 		printProgress("SingleSimulation.compute() - 2d");
@@ -197,9 +198,10 @@ public class SingleSimulation implements Operation<SimulationResult> {
 		SCWList filteredIslands = new SCWLOFilterThreshold(islandsQValues, 0, Q_VALUE_CUTOFF, false).compute();
 		filteredIslands = new SCWLOConvertIntoSimpleSCWList(filteredIslands, SCWListType.MASK).compute();
 
-		// 12 - compute false positive and false negatives
+		// 12 - compute average difference, false positives and false negatives
 		printProgress("SingleSimulation.compute() - 12");
-		SimulationResult simulationResult = new ComputeSimulationResult(islandSize, percentageReadToAdd, islandMask, filteredIslands).compute();
+		float averageSG1Difference = new ComputeSampleCtrlAverageDifference(sampleCtrlDifference, filteredIslands).compute();
+		SimulationResult simulationResult = new ComputeSimulationResult(islandSize, percentageReadToAdd, islandMask, filteredIslands, averageSG1Difference).compute();
 
 		return simulationResult;
 	}
@@ -224,6 +226,7 @@ public class SingleSimulation implements Operation<SimulationResult> {
 		GeneList resGeneList = new SCWLOConvertIntoGeneList(resMaskList).compute();
 		return resGeneList;
 	}
+
 
 	/**
 	 * Merge overlapping genes of gene list together
@@ -274,8 +277,14 @@ public class SingleSimulation implements Operation<SimulationResult> {
 	 */
 	public void printSCWInTmpFile(ListView<? extends ScoredChromosomeWindow> data, String prefix) throws IOException {
 		if (PRINT_FILES) {
-			File file = new File(outputDir.getAbsolutePath() + islandSize + "_" + percentageReadToAdd + "_" + prefix + ".bed");
-			System.out.println("Writing file: " + file.getPath());
+			int sigma = GAUSSIAN_MV_WIDTH / 4;
+			File file = new File(outputDir, "RIF=" + READ_INCREASE_FACTOR +
+					", Sigma=" + sigma +
+					", IF=(" +IF_MIN_WINDOW + ", " +IF_MIN_LENGTH + ", " + IF_GAP +
+					"), IS=" + islandSize + "bp, RA=" + NumberFormat.getPercentInstance().format(percentageReadToAdd) + " " + prefix + ".bed");
+			if (PRINT_PROGRESS) {
+				System.out.println("Writing file: " + file.getPath());
+			}
 			//Write the data
 			PrintWriter dout = new PrintWriter(file);
 			for (int i = 0; i < data.size(); i++) {

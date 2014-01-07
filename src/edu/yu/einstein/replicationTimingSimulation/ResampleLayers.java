@@ -48,6 +48,7 @@ public class ResampleLayers implements Operation<SCWList[]>{
 	private final SCWList 	sList;				// input list with the S phase data
 	private final SCWList 	g1List;				// input list with the G1 phase data
 	private final double	percentageToAdd;	// percentage of reads to add in the S phase
+	private final int 		readIncreaseFactor; // multiply all the input reads by this factor
 	private boolean			stopped = false;	// true if the operation must be stopped
 
 
@@ -56,11 +57,13 @@ public class ResampleLayers implements Operation<SCWList[]>{
 	 * @param sList input list with the S phase data
 	 * @param g1List input list with the G1 phase data
 	 * @param percentageToAdd percentage of reads to add in the S phase
+	 * @param readIncreaseFactor multiply all the input reads by this factor
 	 */
-	public ResampleLayers(SCWList sList, SCWList g1List, double percentageToAdd) {
+	public ResampleLayers(SCWList sList, SCWList g1List, double percentageToAdd, int readIncreaseFactor) {
 		this.sList = sList;
 		this.g1List = g1List;
 		this.percentageToAdd = percentageToAdd;
+		this.readIncreaseFactor = readIncreaseFactor;
 	}
 
 
@@ -84,17 +87,19 @@ public class ResampleLayers implements Operation<SCWList[]>{
 				@Override
 				public Void call() throws Exception {
 					for (int j = 0; (j < currentSList.size()) && !stopped; j++) {
+						float currentS = currentSList.get(j).getScore() * readIncreaseFactor;
+						float currentG1 = currentG1List.get(j).getScore() * readIncreaseFactor;
 						float newS;
 						float newG1;
-						if (currentSList.get(j).getScore() == 0) {
+						if (currentS == 0) {
 							newS = 0;
-							newG1 = currentG1List.get(j).getScore();
-						} else if (currentG1List.get(j).getScore() == 0) {
-							newS = (int) (currentSList.get(j).getScore() + (currentSList.get(j).getScore() * percentageToAdd));
+							newG1 = currentG1;
+						} else if (currentG1 == 0) {
+							newS = (int) (currentS + (currentS * percentageToAdd));
 							newG1 = 0;
 						} else {
-							int oldK = (int) currentSList.get(j).getScore();
-							int oldN = (int) (currentSList.get(j).getScore() + currentG1List.get(j).getScore());
+							int oldK = (int) currentS;
+							int oldN = (int) (currentS + currentG1);
 							int readToAdd = (int) Math.round(oldK * percentageToAdd);
 							int newK = oldK + readToAdd;
 							int newN = oldN + readToAdd;

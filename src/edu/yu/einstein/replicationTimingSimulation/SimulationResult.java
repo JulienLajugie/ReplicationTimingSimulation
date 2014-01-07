@@ -27,10 +27,12 @@ package edu.yu.einstein.replicationTimingSimulation;
  */
 public class SimulationResult {
 
-	private final int 		islandSize;				// size of the islands used in the simulation
-	private final double 	percentageReadsAdded;	// number of reads added to the island (eg: 0.1 if there were 10% more reads)
-	private final double	falsePositiveRate;		// rate of false positives
-	private final double	falseNegativeRate;		// rate of false negatives
+	private final int 		islandSize;						// size of the islands used in the simulation
+	private final double 	percentageReadsAdded;			// number of reads added to the island (eg: 0.1 if there were 10% more reads)
+	private final double	falsePositiveRate;				// rate of false positives
+	private final double	falseNegativeRate;				// rate of false negatives
+	private final int 		islandAverageSize;				// average size of the island found
+	private final float		sampleCtrlAverageDifference;	// average difference between the sample and the control after gaussing
 
 
 	/**
@@ -41,8 +43,13 @@ public class SimulationResult {
 	 * @param islandFoundCount number of island detected during the simulation
 	 * @param falsePositiveCount number of islands found that were not generated
 	 * @param falseNegativeCount number of islands missed
+	 * @param islandAverageSize average size of the island found during the simulation
+	 * @param SG1AverageDifference average difference between the sample and the control after gaussing
 	 */
-	public SimulationResult(int islandSize, double percentageReadsAdded, int islandCreatedCount, int islandFoundCount, int falsePositiveCount, int falseNegativeCount) {
+	public SimulationResult(int islandSize, double percentageReadsAdded,
+			int islandCreatedCount, int islandFoundCount,
+			int falsePositiveCount, int falseNegativeCount,
+			int islandAverageSize, float sampleCtrlAverageDifference) {
 		this.islandSize = islandSize;
 		this.percentageReadsAdded = percentageReadsAdded;
 		if (islandFoundCount == 0) {
@@ -51,6 +58,8 @@ public class SimulationResult {
 			falsePositiveRate = falsePositiveCount / (double) islandFoundCount;
 		}
 		falseNegativeRate = falseNegativeCount / (double) islandCreatedCount;
+		this.islandAverageSize = islandAverageSize;
+		this.sampleCtrlAverageDifference = sampleCtrlAverageDifference;
 	}
 
 
@@ -71,6 +80,14 @@ public class SimulationResult {
 
 
 	/**
+	 * @return the average size of the island found during the simulation
+	 */
+	public int getIslandAverageSize() {
+		return islandAverageSize;
+	}
+
+
+	/**
 	 * @return the size of the island used during the simulation
 	 */
 	public int getIslandSize() {
@@ -83,5 +100,13 @@ public class SimulationResult {
 	 */
 	public double getPercentageReadsAdded() {
 		return percentageReadsAdded;
+	}
+
+
+	/**
+	 * @return the average difference (after gaussing) between the sample and the control after gaussing
+	 */
+	public float getSampleCtrlAverageDifference() {
+		return sampleCtrlAverageDifference;
 	}
 }

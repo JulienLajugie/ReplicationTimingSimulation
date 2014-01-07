@@ -25,6 +25,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.security.InvalidParameterException;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -70,6 +71,10 @@ public class RunSimulationBatch {
 		@Parameter(names = "-out", description = "Output directory for the results of the simulation")
 		private String outDir;
 	}
+	private final static int FALSE_POSITIVES = 0;
+	private final static int FALSE_NEGATIVES = 1;
+	private final static int ISLAND_AVERAGE_SIZE = 2;
+	private final static int SAMPLE_CTRL_AVERAGE_DIFFERENCE = 3;
 
 	// Island sizes to consider for the simulation
 	private final static int[] islandSizes = {125000, 250000, 500000, 1000000, 2000000};
@@ -77,8 +82,8 @@ public class RunSimulationBatch {
 	// Percentage of reads to add for the simulation
 	private final static double[] pctReadToAdds = {0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5};
 
-	//private final static int[] islandSizes = {125000, 250000, 500000, 1000000, 2000000};
-	//private final static double[] pctReadToAdds = {0.05, 0.1, 0.15, 0.2, 0.3};
+	//private final static int[] islandSizes = {500000};
+	//private final static double[] pctReadToAdds = {0.15};
 
 	/**
 	 * Initializes genplay project manager
@@ -122,13 +127,14 @@ public class RunSimulationBatch {
 	public static void main(String[] args) {
 		Args parameters = new Args();
 		new JCommander(parameters, args);
-		File sFile;
 		try {
-
-			sFile = new File(parameters.sFile);
+			File sFile = new File(parameters.sFile);
 			File g1File = new File(parameters.g1File);
 			File outDir = new File(parameters.outDir);
-			File outFile = new File(outDir.getAbsolutePath() + "simulation_summary.tsv");
+			if (!outDir.exists()) {
+				outDir.mkdir();
+			}
+			File outFile = new File(outDir, "simulation_summary.tsv");
 
 			initManagers();
 
@@ -157,6 +163,41 @@ public class RunSimulationBatch {
 	}
 
 
+	private static void printResult(BufferedWriter writer, List<SimulationResult> resultList, String title, int elementToPrint) throws IOException {
+		writer.write(title);
+		writer.newLine();
+		for (int islandSize: islandSizes) {
+			writer.write("\t" + islandSize);
+		}
+		writer.newLine();
+		int index = 0;
+		for (int i = 0; i < pctReadToAdds.length; i++) {
+			writer.write(Double.toString(pctReadToAdds[i]));
+			for (int j = 0; j < islandSizes.length; j++) {
+				switch (elementToPrint) {
+				case FALSE_POSITIVES:
+					writer.write("\t" + resultList.get(index).getFalsePositiveRate());
+					break;
+				case FALSE_NEGATIVES:
+					writer.write("\t" + resultList.get(index).getFalseNegativeRate());
+					break;
+				case ISLAND_AVERAGE_SIZE:
+					writer.write("\t" + resultList.get(index).getIslandAverageSize());
+					break;
+				case SAMPLE_CTRL_AVERAGE_DIFFERENCE:
+					writer.write("\t" + resultList.get(index).getSampleCtrlAverageDifference());
+					break;
+				default:
+					throw new InvalidParameterException("Invalid element to print");
+				}
+				index++;
+			}
+			writer.newLine();
+		}
+		writer.newLine();
+	}
+
+
 	/**
 	 * Prints the result of the simulation in the specified file
 	 * @param outFile
@@ -167,37 +208,10 @@ public class RunSimulationBatch {
 		BufferedWriter writer = null;
 		try {
 			writer = new BufferedWriter(new FileWriter(outFile));
-			writer.write("FALSE POSITIVES");
-			writer.newLine();
-			for (int islandSize: islandSizes) {
-				writer.write("\t" + islandSize);
-			}
-			writer.newLine();
-			int index = 0;
-			for (int i = 0; i < pctReadToAdds.length; i++) {
-				writer.write(Double.toString(pctReadToAdds[i]));
-				for (int j = 0; j < islandSizes.length; j++) {
-					writer.write("\t" + resultList.get(index).getFalsePositiveRate());
-					index++;
-				}
-				writer.newLine();
-			}
-			writer.newLine();
-			writer.write("FALSE NEGATIVES");
-			writer.newLine();
-			for (int islandSize: islandSizes) {
-				writer.write("\t" + islandSize);
-			}
-			writer.newLine();
-			index = 0;
-			for (int i = 0; i < pctReadToAdds.length; i++) {
-				writer.write(Double.toString(pctReadToAdds[i]));
-				for (int j = 0; j < islandSizes.length; j++) {
-					writer.write("\t" + resultList.get(index).getFalseNegativeRate());
-					index++;
-				}
-				writer.newLine();
-			}
+			printResult(writer, resultList, "FALSE POSITIVES", FALSE_POSITIVES);
+			printResult(writer, resultList, "FALSE NEGATIVES", FALSE_NEGATIVES);
+			printResult(writer, resultList, "ISLAND AVERAGE SIZE", ISLAND_AVERAGE_SIZE);
+			printResult(writer, resultList, "SAMPLE - CTRL AVERAGE DIFFERENCE", SAMPLE_CTRL_AVERAGE_DIFFERENCE);
 		} finally {
 			if (writer != null) {
 				writer.close();
