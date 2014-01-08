@@ -58,7 +58,6 @@ import edu.yu.einstein.genplay.dataStructure.scoredChromosomeWindow.ScoredChromo
 public class SingleSimulation implements Operation<SimulationResult> {
 
 	private final static int		ISLAND_DISTANCE 		= 4000000; 	// space between 2 island starts position
-	private final static int		READ_INCREASE_FACTOR 	= 1; 		// multiply the input reads by this factor
 	private final static float		Q_VALUE_CUTOFF 			= 0.05f;	// cutoff for the qValue
 	private final static boolean	USE_ISLAND_FINDER 		= true;		// true to use the island finder to define the island
 	private final static boolean	PRINT_PROGRESS 			= false;	// set to true to print progress info
@@ -73,6 +72,7 @@ public class SingleSimulation implements Operation<SimulationResult> {
 	private final double 	percentageReadToAdd;		// percentage of reads to add in the S phase in the islands
 	private final SCWList 	sList;						// s phase data
 	private final SCWList 	g1List;						// g1 phase data
+	private final int 		readIncreaseFactor;			// the read count from the input files will be multiplied by the following factors
 
 
 	/**
@@ -82,17 +82,20 @@ public class SingleSimulation implements Operation<SimulationResult> {
 	 * @param percentageReadToAdd percentage of reads to add in the S phase in the islands
 	 * @param sList s phase data
 	 * @param g1List g1 phase data
+	 * @param readIncreaseFactor the read count from the input files will be multiplied by the following factors
 	 */
 	public SingleSimulation(File outputDir,
 			int islandSize,
 			double percentageReadToAdd,
 			SCWList sList,
-			SCWList g1List) {
+			SCWList g1List,
+			int readIncreaseFactor) {
 		this.outputDir = outputDir;
 		this.islandSize = islandSize;
 		this.percentageReadToAdd = percentageReadToAdd;
 		this.sList = sList;
 		this.g1List = g1List;
+		this.readIncreaseFactor = readIncreaseFactor;
 	}
 
 
@@ -100,7 +103,7 @@ public class SingleSimulation implements Operation<SimulationResult> {
 	public SimulationResult compute() throws Exception {
 		printProgress("SingleSimulation.compute() - 1");
 		// 1 - generate control lists
-		SCWList[] resampledList = new ResampleLayers(sList, g1List, 0, READ_INCREASE_FACTOR).compute();
+		SCWList[] resampledList = new ResampleLayers(sList, g1List, 0, readIncreaseFactor).compute();
 		SCWList controlS = resampledList[0];
 		SCWList controlG1 = resampledList[1];
 
@@ -108,13 +111,13 @@ public class SingleSimulation implements Operation<SimulationResult> {
 
 		// 2a - generate list with reads added
 		printProgress("SingleSimulation.compute() - 2a");
-		resampledList = new ResampleLayers(sList, g1List, percentageReadToAdd, READ_INCREASE_FACTOR).compute();
+		resampledList = new ResampleLayers(sList, g1List, percentageReadToAdd, readIncreaseFactor).compute();
 		SCWList resampledSReadAdded = resampledList[0];
 		SCWList resampledG1ReadAdded = resampledList[1];
 
 		// 2b - generate list with no reads added
 		printProgress("SingleSimulation.compute() - 2b");
-		resampledList = new ResampleLayers(sList, g1List, 0, READ_INCREASE_FACTOR).compute();
+		resampledList = new ResampleLayers(sList, g1List, 0, readIncreaseFactor).compute();
 		SCWList resampledSNoReadAdded = resampledList[0];
 		SCWList resampledG1NoReadAdded = resampledList[1];
 
@@ -278,7 +281,7 @@ public class SingleSimulation implements Operation<SimulationResult> {
 	public void printSCWInTmpFile(ListView<? extends ScoredChromosomeWindow> data, String prefix) throws IOException {
 		if (PRINT_FILES) {
 			int sigma = GAUSSIAN_MV_WIDTH / 4;
-			File file = new File(outputDir, "RIF=" + READ_INCREASE_FACTOR +
+			File file = new File(outputDir, "RIF=" + readIncreaseFactor +
 					", Sigma=" + sigma +
 					", IF=(" +IF_MIN_WINDOW + ", " +IF_MIN_LENGTH + ", " + IF_GAP +
 					"), IS=" + islandSize + "bp, RA=" + NumberFormat.getPercentInstance().format(percentageReadToAdd) + " " + prefix + ".bed");

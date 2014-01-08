@@ -71,19 +71,22 @@ public class RunSimulationBatch {
 		@Parameter(names = "-out", description = "Output directory for the results of the simulation")
 		private String outDir;
 	}
+
+	// different fields of the result of a simulation
 	private final static int FALSE_POSITIVES = 0;
 	private final static int FALSE_NEGATIVES = 1;
 	private final static int ISLAND_AVERAGE_SIZE = 2;
 	private final static int SAMPLE_CTRL_AVERAGE_DIFFERENCE = 3;
 
 	// Island sizes to consider for the simulation
-	private final static int[] islandSizes = {125000, 250000, 500000, 1000000, 2000000};
+	private final static int[] islandSizes = {75000, 125000, 250000, 500000, 1000000};
 
 	// Percentage of reads to add for the simulation
-	private final static double[] pctReadToAdds = {0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5};
+	private final static double[] pctReadToAdds = {0.025, 0.05, 0.1, 0.15, 0.2, 0.3};
 
-	//private final static int[] islandSizes = {500000};
-	//private final static double[] pctReadToAdds = {0.15};
+	// The read count from the input files will be multiplied by the following factors
+	private final static int[] readIncreaseFactors = {1, 2, 3, 5, 7, 10};
+
 
 	/**
 	 * Initializes genplay project manager
@@ -134,27 +137,12 @@ public class RunSimulationBatch {
 			if (!outDir.exists()) {
 				outDir.mkdir();
 			}
-			File outFile = new File(outDir, "simulation_summary.tsv");
-
 			initManagers();
-
 			SCWList sList = loadInputFile(sFile);
 			SCWList g1List = loadInputFile(g1File);
-
-			List<SimulationResult> resultList = new ArrayList<SimulationResult>();
-			for (double pctReadToAdd: pctReadToAdds) {
-				for (int islandSize: islandSizes) {
-					System.out.println("*** Simulation with "
-							+ (pctReadToAdd * 100)
-							+ "% reads added on islands of "
-							+ NumberFormat.getIntegerInstance().format(islandSize)
-							+ "bp starting ***");
-					SimulationResult result = new SingleSimulation(outDir, islandSize, pctReadToAdd, sList, g1List).compute();
-					resultList.add(result);
-				}
+			for (int readIncreaseFactor: readIncreaseFactors) {
+				runFactorBatch(readIncreaseFactor, sList, g1List, outDir);
 			}
-
-			printResult(outFile, resultList);
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
@@ -163,7 +151,37 @@ public class RunSimulationBatch {
 	}
 
 
-	private static void printResult(BufferedWriter writer, List<SimulationResult> resultList, String title, int elementToPrint) throws IOException {
+	/**
+	 * Prints the result of the simulation in the specified file
+	 * @param outFile
+	 * @param resultList
+	 * @throws IOException
+	 */
+	private static void printResult(File outFile, List<SimulationResult> resultList) throws IOException {
+		BufferedWriter writer = null;
+		try {
+			writer = new BufferedWriter(new FileWriter(outFile));
+			printResultField(writer, resultList, "FALSE POSITIVES", FALSE_POSITIVES);
+			printResultField(writer, resultList, "FALSE NEGATIVES", FALSE_NEGATIVES);
+			printResultField(writer, resultList, "ISLAND AVERAGE SIZE", ISLAND_AVERAGE_SIZE);
+			printResultField(writer, resultList, "SAMPLE - CTRL AVERAGE DIFFERENCE", SAMPLE_CTRL_AVERAGE_DIFFERENCE);
+		} finally {
+			if (writer != null) {
+				writer.close();
+			}
+		}
+	}
+
+
+	/**
+	 * Prints one of the field of the result of a simulation
+	 * @param writer writer that will write in the file
+	 * @param resultList result of the simulation
+	 * @param title title of the field
+	 * @param fieldToPrint field to print. Can be {@link #FALSE_POSITIVES}, {@link #FALSE_NEGATIVES}, {@link #ISLAND_AVERAGE_SIZE} or {@link #SAMPLE_CTRL_AVERAGE_DIFFERENCE}
+	 * @throws IOException
+	 */
+	private static void printResultField(BufferedWriter writer, List<SimulationResult> resultList, String title, int fieldToPrint) throws IOException {
 		writer.write(title);
 		writer.newLine();
 		for (int islandSize: islandSizes) {
@@ -174,7 +192,7 @@ public class RunSimulationBatch {
 		for (int i = 0; i < pctReadToAdds.length; i++) {
 			writer.write(Double.toString(pctReadToAdds[i]));
 			for (int j = 0; j < islandSizes.length; j++) {
-				switch (elementToPrint) {
+				switch (fieldToPrint) {
 				case FALSE_POSITIVES:
 					writer.write("\t" + resultList.get(index).getFalsePositiveRate());
 					break;
@@ -199,23 +217,36 @@ public class RunSimulationBatch {
 
 
 	/**
-	 * Prints the result of the simulation in the specified file
-	 * @param outFile
-	 * @param resultList
-	 * @throws IOException
+	 * Runs a batch of simulation for a given increase read increase factor
+	 * @param readIncreaseFactor
+	 * @param sList
+	 * @param g1List
+	 * @param outDir
+	 * @throws Exception
 	 */
-	private static void printResult(File outFile, List<SimulationResult> resultList) throws IOException {
-		BufferedWriter writer = null;
-		try {
-			writer = new BufferedWriter(new FileWriter(outFile));
-			printResult(writer, resultList, "FALSE POSITIVES", FALSE_POSITIVES);
-			printResult(writer, resultList, "FALSE NEGATIVES", FALSE_NEGATIVES);
-			printResult(writer, resultList, "ISLAND AVERAGE SIZE", ISLAND_AVERAGE_SIZE);
-			printResult(writer, resultList, "SAMPLE - CTRL AVERAGE DIFFERENCE", SAMPLE_CTRL_AVERAGE_DIFFERENCE);
-		} finally {
-			if (writer != null) {
-				writer.close();
+	private static void runFactorBatch(int readIncreaseFactor, SCWList sList, SCWList g1List, File outDir) throws Exception {
+		// create outputDir
+		outDir = new File(outDir, Integer.toString(readIncreaseFactor));
+		if (!outDir.exists()) {
+			outDir.mkdir();
+		}
+		// output file
+		File outFile = new File(outDir, "simulation_summary.tsv");
+		// simulation batch
+		System.out.println(">>> Read Increase Factor " + readIncreaseFactor + " batch starting <<<");
+		List<SimulationResult> resultList = new ArrayList<SimulationResult>();
+		for (double pctReadToAdd: pctReadToAdds) {
+			for (int islandSize: islandSizes) {
+				System.out.println("*** Simulation with "
+						+ (pctReadToAdd * 100)
+						+ "% reads added on islands of "
+						+ NumberFormat.getIntegerInstance().format(islandSize)
+						+ "bp starting ***");
+				SimulationResult result = new SingleSimulation(outDir, islandSize, pctReadToAdd, sList, g1List, readIncreaseFactor).compute();
+				resultList.add(result);
 			}
 		}
+		// print the result of the batch
+		printResult(outFile, resultList);
 	}
 }
