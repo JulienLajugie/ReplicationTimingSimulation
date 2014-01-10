@@ -9,10 +9,10 @@ import edu.yu.einstein.genplay.dataStructure.list.genomeWideList.SCWList.binList
 
 
 /**
- * Computes the average value of the differences between the sample and the control on the islands
+ * Computes the average value and the standard error of the differences between the sample and the control on the islands
  * @author Julien Lajugie
  */
-public class ComputeSampleCtrlAverageDifference implements Operation<Float>{
+public class ComputeSampleCtrlDifferenceAverageAndStdErr implements Operation<Double[]>{
 
 	private final BinList 	differenceList;		// list containing the differences between the sample and the control
 	private final SCWList 	filteredIslands;	// islands found during the simulation
@@ -20,36 +20,44 @@ public class ComputeSampleCtrlAverageDifference implements Operation<Float>{
 
 
 	/**
-	 * Creates an instance of {@link ComputeSampleCtrlAverageDifference}
+	 * Creates an instance of {@link ComputeSampleCtrlDifferenceAverageAndStdErr}
 	 * @param differenceList list containing the differences between the sample and the control
 	 * @param islands islands found during the simulation
 	 */
-	public ComputeSampleCtrlAverageDifference(BinList differenceList, SCWList filteredIslands) {
+	public ComputeSampleCtrlDifferenceAverageAndStdErr(BinList differenceList, SCWList filteredIslands) {
 		this.differenceList = differenceList;
 		this.filteredIslands = filteredIslands;
 	}
 
 
 	@Override
-	public Float compute() throws Exception {
+	public Double[] compute() throws Exception {
 		BinList filteredIslandsBinList = new SCWLOConvertIntoBinList(filteredIslands, 500, ScoreOperation.ADDITION).compute();
 		if (stopped) {
 			return null;
 		}
 		BinList averageList = new BLOIntervalsScoring(filteredIslandsBinList, differenceList, 100, ScoreOperation.AVERAGE).compute();
-		return (float) averageList.getStatistics().getAverage();
+		Double average = averageList.getStatistics().getAverage();
+
+		Double islandCount = (double) filteredIslands.getStatistics().getWindowCount();
+		Double stdErr = 0.0;
+		if (islandCount != 0) {
+			stdErr = averageList.getStatistics().getStandardDeviation() / Math.sqrt(islandCount);
+		}
+		Double[] result = {average, stdErr};
+		return result;
 	}
 
 
 	@Override
 	public String getDescription() {
-		return "Operation: Compute Sample - Control Average Difference";
+		return "Operation: Compute Sample - Control Difference Average and Standard Error";
 	}
 
 
 	@Override
 	public String getProcessingDescription() {
-		return "Computing the Average Difference Between the Sample and the Control";
+		return "Computing the Average and the Standard Error of the Differences Between the Sample and the Control";
 	}
 
 

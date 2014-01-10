@@ -203,8 +203,8 @@ public class SingleSimulation implements Operation<SimulationResult> {
 
 		// 12 - compute average difference, false positives and false negatives
 		printProgress("SingleSimulation.compute() - 12");
-		float averageSG1Difference = new ComputeSampleCtrlAverageDifference(sampleCtrlDifference, filteredIslands).compute();
-		SimulationResult simulationResult = new ComputeSimulationResult(islandSize, percentageReadToAdd, islandMask, filteredIslands, averageSG1Difference).compute();
+		Double[] sampleCtrlDifferenceAvgAndStdErr = new ComputeSampleCtrlDifferenceAverageAndStdErr(sampleCtrlDifference, filteredIslands).compute();
+		SimulationResult simulationResult = new ComputeSimulationResult(islandSize, percentageReadToAdd, islandMask, filteredIslands, sampleCtrlDifferenceAvgAndStdErr[0], sampleCtrlDifferenceAvgAndStdErr[1]).compute();
 
 		return simulationResult;
 	}

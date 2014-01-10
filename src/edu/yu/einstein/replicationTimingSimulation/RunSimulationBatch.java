@@ -73,19 +73,27 @@ public class RunSimulationBatch {
 	}
 
 	// different fields of the result of a simulation
-	private final static int FALSE_POSITIVES = 0;
-	private final static int FALSE_NEGATIVES = 1;
-	private final static int ISLAND_AVERAGE_SIZE = 2;
-	private final static int SAMPLE_CTRL_AVERAGE_DIFFERENCE = 3;
+	private final static int ISLAND_CREATED_COUNT = 0;
+	private final static int ISLAND_FOUND_COUNT = 1;
+	private final static int FALSE_POSITIVES_RATE = 2;
+	private final static int FALSE_POSITIVES_COUNT = 3;
+	private final static int FALSE_NEGATIVES_RATE = 4;
+	private final static int FALSE_NEGATIVES_COUNT = 5;
+	private final static int ISLAND_SIZE_MEAN = 6;
+	private final static int ISLAND_SIZE_STD_ERR = 7;
+	private final static int SAMPLE_CTRL_DIFFERENCE_MEAN = 8;
+	private final static int SAMPLE_CTRL_DIFFERENCE_STD_ERR = 9;
 
 	// Island sizes to consider for the simulation
-	private final static int[] islandSizes = {75000, 125000, 250000, 500000, 1000000};
+	private final static int[] islandSizes = {125000, 250000, 500000, 1000000, 2000000};
+	//private final static int[] islandSizes = {500000};
 
 	// Percentage of reads to add for the simulation
-	private final static double[] pctReadToAdds = {0.025, 0.05, 0.1, 0.15, 0.2, 0.3};
+	private final static double[] pctReadToAdds = {0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.05};
+	//private final static double[] pctReadToAdds = {0.15};
 
 	// The read count from the input files will be multiplied by the following factors
-	private final static int[] readIncreaseFactors = {1, 2, 3, 5, 7, 10};
+	private final static int[] readIncreaseFactors = {1};
 
 
 	/**
@@ -161,10 +169,16 @@ public class RunSimulationBatch {
 		BufferedWriter writer = null;
 		try {
 			writer = new BufferedWriter(new FileWriter(outFile));
-			printResultField(writer, resultList, "FALSE POSITIVES", FALSE_POSITIVES);
-			printResultField(writer, resultList, "FALSE NEGATIVES", FALSE_NEGATIVES);
-			printResultField(writer, resultList, "ISLAND AVERAGE SIZE", ISLAND_AVERAGE_SIZE);
-			printResultField(writer, resultList, "SAMPLE - CTRL AVERAGE DIFFERENCE", SAMPLE_CTRL_AVERAGE_DIFFERENCE);
+			printResultField(writer, resultList, "ISLAND CREATED COUNT", ISLAND_CREATED_COUNT);
+			printResultField(writer, resultList, "ISLAND FOUND COUNT", ISLAND_FOUND_COUNT);
+			printResultField(writer, resultList, "FALSE POSITIVES RATE", FALSE_POSITIVES_RATE);
+			printResultField(writer, resultList, "FALSE POSITIVES COUNT", FALSE_POSITIVES_COUNT);
+			printResultField(writer, resultList, "FALSE NEGATIVES RATE", FALSE_NEGATIVES_RATE);
+			printResultField(writer, resultList, "FALSE NEGATIVES COUNT", FALSE_NEGATIVES_COUNT);
+			printResultField(writer, resultList, "ISLAND SIZE MEAN", ISLAND_SIZE_MEAN);
+			printResultField(writer, resultList, "ISLAND SIZE STD ERR", ISLAND_SIZE_STD_ERR);
+			printResultField(writer, resultList, "SAMPLE CTRL DIFFERENCE MEAN", SAMPLE_CTRL_DIFFERENCE_MEAN);
+			printResultField(writer, resultList, "SAMPLE CTRL DIFFERENCE STD ERR", SAMPLE_CTRL_DIFFERENCE_STD_ERR);
 		} finally {
 			if (writer != null) {
 				writer.close();
@@ -193,17 +207,35 @@ public class RunSimulationBatch {
 			writer.write(Double.toString(pctReadToAdds[i]));
 			for (int j = 0; j < islandSizes.length; j++) {
 				switch (fieldToPrint) {
-				case FALSE_POSITIVES:
+				case ISLAND_CREATED_COUNT:
+					writer.write("\t" + resultList.get(index).getIslandCreatedCount());
+					break;
+				case ISLAND_FOUND_COUNT:
+					writer.write("\t" + resultList.get(index).getIslandFoundCount());
+					break;
+				case FALSE_POSITIVES_RATE:
 					writer.write("\t" + resultList.get(index).getFalsePositiveRate());
 					break;
-				case FALSE_NEGATIVES:
+				case FALSE_POSITIVES_COUNT:
+					writer.write("\t" + resultList.get(index).getFalsePositiveCount());
+					break;
+				case FALSE_NEGATIVES_RATE:
 					writer.write("\t" + resultList.get(index).getFalseNegativeRate());
 					break;
-				case ISLAND_AVERAGE_SIZE:
+				case FALSE_NEGATIVES_COUNT:
+					writer.write("\t" + resultList.get(index).getFalseNegativeCount());
+					break;
+				case ISLAND_SIZE_MEAN:
 					writer.write("\t" + resultList.get(index).getIslandAverageSize());
 					break;
-				case SAMPLE_CTRL_AVERAGE_DIFFERENCE:
+				case ISLAND_SIZE_STD_ERR:
+					writer.write("\t" + resultList.get(index).getIslandSizeStdErr());
+					break;
+				case SAMPLE_CTRL_DIFFERENCE_MEAN:
 					writer.write("\t" + resultList.get(index).getSampleCtrlAverageDifference());
+					break;
+				case SAMPLE_CTRL_DIFFERENCE_STD_ERR:
+					writer.write("\t" + resultList.get(index).getSampleCtrlDifferenceStdErr());
 					break;
 				default:
 					throw new InvalidParameterException("Invalid element to print");

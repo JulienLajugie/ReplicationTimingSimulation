@@ -29,10 +29,14 @@ public class SimulationResult {
 
 	private final int 		islandSize;						// size of the islands used in the simulation
 	private final double 	percentageReadsAdded;			// number of reads added to the island (eg: 0.1 if there were 10% more reads)
-	private final double	falsePositiveRate;				// rate of false positives
-	private final double	falseNegativeRate;				// rate of false negatives
+	private final int 		islandCreatedCount;				// number of islands created for the simulation
+	private final int 		islandFoundCount;				// number of island found at the end of the simulation
+	private final int 		falsePositiveCount;				// number of false positives in the simulation
+	private final int 		falseNegativeCount;				// number of false negative in the simulation
 	private final int 		islandAverageSize;				// average size of the island found
-	private final float		sampleCtrlAverageDifference;	// average difference between the sample and the control after gaussing
+	private final double	islandSizeStdErr;				// standard error of the island size
+	private final double	sampleCtrlAverageDifference;	// average difference between the sample and the control after gaussing
+	private final double	sampleCtrlDifferenceStdErr;		// standard error of the differences between the sample and the control after gaussing
 
 
 	/**
@@ -49,17 +53,26 @@ public class SimulationResult {
 	public SimulationResult(int islandSize, double percentageReadsAdded,
 			int islandCreatedCount, int islandFoundCount,
 			int falsePositiveCount, int falseNegativeCount,
-			int islandAverageSize, float sampleCtrlAverageDifference) {
+			int islandAverageSize, double islandSizeStdErr,
+			double sampleCtrlAverageDifference, double sampleCtrlDifferenceStdErr) {
 		this.islandSize = islandSize;
 		this.percentageReadsAdded = percentageReadsAdded;
-		if (islandFoundCount == 0) {
-			falsePositiveRate = 0;
-		} else {
-			falsePositiveRate = falsePositiveCount / (double) islandFoundCount;
-		}
-		falseNegativeRate = falseNegativeCount / (double) islandCreatedCount;
+		this.islandCreatedCount = islandCreatedCount;
+		this.islandFoundCount = islandFoundCount;
+		this.falsePositiveCount = falsePositiveCount;
+		this.falseNegativeCount = falseNegativeCount;
 		this.islandAverageSize = islandAverageSize;
+		this.islandSizeStdErr = islandSizeStdErr;
 		this.sampleCtrlAverageDifference = sampleCtrlAverageDifference;
+		this.sampleCtrlDifferenceStdErr = sampleCtrlDifferenceStdErr;
+	}
+
+
+	/**
+	 * @return the number of false negatives
+	 */
+	public int getFalseNegativeCount() {
+		return falseNegativeCount;
 	}
 
 
@@ -67,7 +80,15 @@ public class SimulationResult {
 	 * @return the false negative rate of the simulation
 	 */
 	public double getFalseNegativeRate() {
-		return falseNegativeRate;
+		return falseNegativeCount / (double) islandCreatedCount;
+	}
+
+
+	/**
+	 * @return the number of false positives
+	 */
+	public int getFalsePositiveCount() {
+		return falsePositiveCount;
 	}
 
 
@@ -75,7 +96,11 @@ public class SimulationResult {
 	 * @return the false positive rate of the simulation
 	 */
 	public double getFalsePositiveRate() {
-		return falsePositiveRate;
+		if (islandFoundCount == 0) {
+			return 0;
+		} else {
+			return falsePositiveCount / (double) islandFoundCount;
+		}
 	}
 
 
@@ -88,10 +113,34 @@ public class SimulationResult {
 
 
 	/**
+	 * @return the number of islands created for the simulation
+	 */
+	public int getIslandCreatedCount() {
+		return islandCreatedCount;
+	}
+
+
+	/**
+	 * @return the number of island found at the end of the simulation
+	 */
+	public int getIslandFoundCount() {
+		return islandFoundCount;
+	}
+
+
+	/**
 	 * @return the size of the island used during the simulation
 	 */
 	public int getIslandSize() {
 		return islandSize;
+	}
+
+
+	/**
+	 * @return the standard error of the island size
+	 */
+	public double getIslandSizeStdErr() {
+		return islandSizeStdErr;
 	}
 
 
@@ -106,7 +155,15 @@ public class SimulationResult {
 	/**
 	 * @return the average difference (after gaussing) between the sample and the control after gaussing
 	 */
-	public float getSampleCtrlAverageDifference() {
+	public double getSampleCtrlAverageDifference() {
 		return sampleCtrlAverageDifference;
+	}
+
+
+	/**
+	 * @return the standard error of the differences between the sample and the control
+	 */
+	public double getSampleCtrlDifferenceStdErr() {
+		return sampleCtrlDifferenceStdErr;
 	}
 }

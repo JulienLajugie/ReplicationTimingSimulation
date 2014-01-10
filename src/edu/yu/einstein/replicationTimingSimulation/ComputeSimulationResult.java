@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 
 import edu.yu.einstein.genplay.core.manager.project.ProjectChromosomes;
 import edu.yu.einstein.genplay.core.manager.project.ProjectManager;
@@ -45,12 +46,13 @@ import edu.yu.einstein.genplay.util.ListView.ListViews;
  **/
 public class ComputeSimulationResult implements Operation<SimulationResult> {
 
-	private final int 		islandSize;				// size of the islands used in the simulation
-	private final double 	percentageReadsAdded;	// number of reads added to the island (eg: 0.1 if there were 10% more reads)
-	private final SCWList 	islandMasks;			// scw list containing the island generated
-	private final SCWList 	islandsFound;			// scw list containing the island found during the simulation
-	private final float		SG1AverageDifference;	// average difference between S and G1 on the island after gaussing
-	private boolean			stopped = false;		// true if the operation must be stopped
+	private final int 		islandSize;						// size of the islands used in the simulation
+	private final double 	percentageReadsAdded;			// number of reads added to the island (eg: 0.1 if there were 10% more reads)
+	private final SCWList 	islandMasks;					// scw list containing the island generated
+	private final SCWList 	islandsFound;					// scw list containing the island found during the simulation
+	private final double	sampleCtrlAverageDifference;	// average difference between S and G1 on the island after gaussing
+	private final double	sampleCtrlDifferenceStdErr;		// standard error difference between the sample on the islands after gaussing
+	private boolean			stopped = false;				// true if the operation must be stopped
 
 
 	/**
@@ -62,14 +64,18 @@ public class ComputeSimulationResult implements Operation<SimulationResult> {
 	 * @param percentageReadsAdded number of reads added to the island (eg: 0.1 if there were 10% more reads)
 	 * @param islandMasks mask containing the island generated
 	 * @param islandsFound gene list containing the island found during the simulation
-	 * @param SG1AverageDifference average difference between S and G1 on the island after gaussing
+	 * @param sampleCtrlAverageDifference average difference between the sample on the islands after gaussing
+	 * @param sampleCtrlDifferenceStdErr standard error difference between the sample on the islands after gaussing
 	 */
-	public ComputeSimulationResult(int islandSize, double percentageReadsAdded, SCWList islandMasks, SCWList islandsFound, float SG1AverageDifference) {
+	public ComputeSimulationResult(int islandSize, double percentageReadsAdded,
+			SCWList islandMasks, SCWList islandsFound,
+			double sampleCtrlAverageDifference, double  sampleCtrlDifferenceStdErr) {
 		this.islandSize = islandSize;
 		this.percentageReadsAdded = percentageReadsAdded;
 		this.islandMasks = islandMasks;
 		this.islandsFound = islandsFound;
-		this.SG1AverageDifference = SG1AverageDifference;
+		this.sampleCtrlAverageDifference = sampleCtrlAverageDifference;
+		this.sampleCtrlDifferenceStdErr = sampleCtrlDifferenceStdErr;
 	}
 
 
@@ -133,7 +139,53 @@ public class ComputeSimulationResult implements Operation<SimulationResult> {
 		if (islandFoundCount != 0) {
 			islandAverageSize = (int) (islandSizeSum / islandFoundCount);
 		}
-		return new SimulationResult(islandSize, percentageReadsAdded, islandCreatedCount, islandFoundCount, falsePositiveCount, falseNegativeCount, islandAverageSize, SG1AverageDifference);
+		double islandSizeStdErr = computeIslandSizeStdErr(islandFoundCount, islandAverageSize);
+		return new SimulationResult(islandSize, percentageReadsAdded, islandCreatedCount, islandFoundCount, falsePositiveCount, falseNegativeCount, islandAverageSize, islandSizeStdErr, sampleCtrlAverageDifference, sampleCtrlDifferenceStdErr);
+	}
+
+
+	/**
+	 * @param islandFoundCount number of islands found in the simulation
+	 * @param islandAverageSize average size of the islands  found in the simulation
+	 * @return the standard error of the length of the islands found in the simulation
+	 * @throws InterruptedException
+	 * @throws ExecutionException
+	 */
+	private double computeIslandSizeStdErr(int islandFoundCount, final double islandAverageSize) throws InterruptedException, ExecutionException {
+		// compute the std deviation of the island length
+		ProjectChromosomes projectChromosomes = ProjectManager.getInstance().getProjectChromosomes();
+		final OperationPool op = OperationPool.getInstance();
+		final Collection<Callable<Double>> threadList = new ArrayList<Callable<Double>>();
+
+		for(final Chromosome currentChromosome : projectChromosomes) {
+			final ListView<ScoredChromosomeWindow> currentFoundIslands = islandsFound.get(currentChromosome);
+			Callable<Double> currentThread = new Callable<Double>() {
+
+				@Override
+				public Double call() throws Exception {
+					double result = 0;
+					// compute standard error
+					for (ChromosomeWindow generatedWindow: currentFoundIslands) {
+						if (stopped) {
+							return null;
+						}
+						result += Math.pow(generatedWindow.getSize() - islandAverageSize, 2);
+						}
+					op.notifyDone();
+					return result;
+				}
+			};
+			threadList.add(currentThread);
+		}
+		List<Double> result = op.startPool(threadList);
+		double islandStdDev = 0;
+		// sum up false positives and false negatives
+		for (Double currentResult: result) {
+			islandStdDev += currentResult;
+		}
+		islandStdDev = Math.sqrt(islandStdDev);
+		// compute the standard error of the island length
+		return islandStdDev / Math.sqrt(islandFoundCount);
 	}
 
 
