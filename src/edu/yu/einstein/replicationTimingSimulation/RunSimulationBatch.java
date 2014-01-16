@@ -89,7 +89,7 @@ public class RunSimulationBatch {
 	//private final static int[] islandSizes = {500000};
 
 	// Percentage of reads to add for the simulation
-	private final static double[] pctReadToAdds = {0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.05};
+	private final static double[] pctReadToAdds = {0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5};
 	//private final static double[] pctReadToAdds = {0.15};
 
 	// The read count from the input files will be multiplied by the following factors
